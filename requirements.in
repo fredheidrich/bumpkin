@@ -1,0 +1,7 @@
+
+# dev
+pip-tools
+pytest
+pytest-watch
+# ----------
+
