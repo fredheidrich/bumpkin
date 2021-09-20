@@ -1,0 +1,556 @@
+"""
+
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and the project uses a calendar versioning scheme, 'year.month[.revision]'.
+
+[TOC]
+
+## [Unreleased]
+
+## [[2021.9](https://www.github.com/aurizon-data-science/roadie/compare/v9.3.0...v9.3.1)] - 2021-09-15
+
+### Bug fixes
+
+* content ([a316dd0](https://www.github.com/aurizon-data-science/roadie/commit/a316dd02f5a7d8dee33d99370afda8738985bc10))
+* content ([a316dd0](https://www.github.com/aurizon-data-science/roadie/commit/a316dd02f5a7d8dee33d99370afda8738985bc10))
+extra content
+
+Some changes.
+A body text of changes that has been made.
+
+Adding more files to the stuff.
+Even more things were added here. Changes were indeed made.
+
+
+USAGE
+- create first release if there was none before
+- bump version from current release
+
+OVERVIEW
+- [x] parse tag spec and compare with latest tag
+- [x] bump the version number
+- [x] write changelog
+- [x] append to existing changelog file
+- [x] write some tests
+- [ ] cli options
+ - [x] dry run option
+- commit and tag release
+
+- [x] more test
+- [x] code coverage
+
+- [ ] put on github
+
+- ci/cd with GitHub Actions
+- package wheel
+- publish to pypy
+- cleanup directory/module structure
+- other version formats
+- format output from config
+"""
+
+from dataclasses import dataclass
+import datetime
+import io
+import logging
+import os
+import re
+import subprocess
+import sys
+
+
+SYS_NONE = 0
+SYS_WIN32 = 1
+SYS_LINUX = 2
+SYS_PYTHON2 = 2
+SYS_PYTHON3 = 3
+
+MIN_SUPPORTED_PYTHON_MAJOR = 3
+MIN_SUPPORTED_PYTHON_MINOR = 7
+MIN_SUPPORTED_PYTHON_MICRO = 0
+
+COMMIT_PATTERN = R"^g([a-z0-9]{40}) '(.*)'"
+
+log = logging.getLogger(__name__)
+
+
+@dataclass
+class ChangeLogContent:
+ is_valid: bool
+ header: str
+ content: str
+
+
+@dataclass
+class CalendarChangeLog:
+ datestr: str
+ prev_version: str
+ new_version: str
+ repo_name: str
+ changes_pivoted: dict
+ is_first_release: bool
+
+
+@dataclass
+class CLIResult:
+ is_valid: bool
+ stdout: str
+
+
+def main():
+
+ is_dry_run = True
+ is_preview_changelog = True
+
+ logging.basicConfig()
+ log.setLevel(logging.DEBUG)
+
+ #############################
+ # note/fred: context cracking
+
+ SYS_PLATFORM = 0
+ PYTHON_VERSION_MAJOR = 0
+ PYTHON_VERSION_MINOR = 0
+
+ if 0: pass
+ elif sys.platform.startswith("win32"):
+  SYS_PLATFORM = SYS_WIN32
+ elif sys.platform.startswith("linux"):
+  SYS_PLATFORM = SYS_LINUX
+ else:
+  log.fatal(f"sys system '{sys.platform}' is not supported")
+  exit(1)
+
+ # todo/fred: fetch which version of the platform we are using
+
+ assert SYS_PLATFORM
+
+ if 0: pass
+ elif sys.version_info[0] == MIN_SUPPORTED_PYTHON_MAJOR:
+  # todo/fred: min micro version
+  if sys.version_info[1] < MIN_SUPPORTED_PYTHON_MINOR:
+   log.fatal(f"python version {sys.version_info[0]}.{sys.version_info[1]} is not supported")
+   exit(1)
+
+  if sys.version_info[1] == MIN_SUPPORTED_PYTHON_MINOR and sys.version_info[2] < MIN_SUPPORTED_PYTHON_MICRO:
+   log.fatal(f"python version {sys.version_info[0]}.{sys.version_info[1]} is not supported")
+   exit(1)
+
+  PYTHON_VERSION_MAJOR = SYS_PYTHON3
+  PYTHON_VERSION_MINOR = sys.version_info[1]  
+
+ else:
+  log.fatal(f"python version {sys.version_info[0]}.{sys.version_info[1]} is not supported")
+  exit(1)
+
+ log.debug(f"sys.platform={sys.platform}, python.version={PYTHON_VERSION_MAJOR}.{PYTHON_VERSION_MINOR}")
+
+ assert PYTHON_VERSION_MAJOR == MIN_SUPPORTED_PYTHON_MAJOR
+ assert PYTHON_VERSION_MINOR >= MIN_SUPPORTED_PYTHON_MINOR
+
+ if SYS_PLATFORM == SYS_WIN32:
+  req_out = subprocess.run(["where", "git"], capture_output=subprocess.PIPE)
+  # log.debug(f"git found at '{req_out.stdout.decode('utf-8').rstrip()}'")
+  git_found = (req_out.returncode == 0)
+ elif SYS_PLATFORM == SYS_LINUX:
+  raise NotImplementedError("find git on linux is not implemented")
+
+ assert git_found
+
+ if git_found == False:
+  log.fatal(f"git could not be found in path")
+  exit(1)
+
+ # todo/fred: fetch which version of git we are dealing with
+
+ #
+ #############################
+ # note/fred: fetch latest tag
+
+ is_first_release = False
+
+ now = datetime.datetime.now()
+ year = now.strftime("%Y")
+ month = f"{now.month}"
+ log.debug("year:%s, month: %s", year, month)
+
+ current_tag = f"{year}.{month}"
+ latest_tag = current_tag
+
+ # note/fred: here we are running a git command and parsing the output
+
+ is_valid, latest_tag = cli("git describe --tags --abbrev=0")
+ log.debug("tag: %s", latest_tag)
+ if not is_valid:
+  log.warning("No tags were found -- treating as first release using tag '%s'", latest_tag)
+  is_first_release = True
+
+ # git_tag_out = subprocess.run(["git", "describe", "--tags", "--abbrev=0"], capture_output=subprocess.PIPE)
+ # if git_tag_out.returncode == 0:
+
+ #  string = io.StringIO(git_tag_out.stdout.decode("utf-8"))
+ #  latest_tag = string.read().rstrip()
+ #  log.debug("tag: %s", latest_tag)
+
+ # else:
+ #  log.warning("No tags were found -- treating as first release using tag '%s'", latest_tag)
+ #  is_first_release = True
+
+ assert latest_tag
+
+ #
+ ##############################
+ # note/fred: parse git commits
+
+ if is_first_release:
+  git_cmd = ["git", "log", "--pretty=g%H '%s'%n%bEOC"]
+ else:
+  git_cmd = ["git", "log", "{}..HEAD".format(latest_tag), "--pretty=g%H '%s'%n%bEOC"]
+
+ log.debug(git_cmd)
+
+ type_pattern = re.compile(R"(.*):(.*)")
+
+ git_out = subprocess.run(git_cmd, capture_output=subprocess.PIPE)
+ if git_out.returncode == 0:
+
+  string = io.StringIO(git_out.stdout.decode("utf-8"))
+  pattern = re.compile(COMMIT_PATTERN)
+
+  changes = parse_git_commits(string, pattern, type_pattern)
+  num_commits_to_report = len(changes)
+
+  ################################
+  # note/fred: fetch new version by bumping the tag according to a given tag spec
+
+  if num_commits_to_report > 0:
+   log.debug("found %d change(s) -- bumping version", num_commits_to_report)
+
+   ################################
+   # note/fred: aggregate changes of type
+
+   changes_pivoted = {}
+   for index, commit_hash, category, subvalue, body in changes:
+    
+    # @speed
+    if not category in changes_pivoted:
+     changes_pivoted[category] = []
+
+    changes_pivoted[category].append((commit_hash, subvalue, body))
+
+   log.debug(changes_pivoted)
+
+   ################################
+   # note/fred: parse tag spec
+
+   # todo/fred: we would like to have differnt types of tag specs
+
+   if is_first_release:
+    new_tag = current_tag
+   else:
+    if latest_tag == current_tag:
+     # note/fred: if the tags are the same, we need to bump the version
+     # according to the tag spec
+
+     tag_spec_pattern = re.compile(R"(\d{4})[.](\d{1,2})([.]\d+)?")
+     tag_result = tag_spec_pattern.match(latest_tag)
+     if tag_result:
+
+      tag_groups = tag_result.groups()
+      log.debug(tag_groups)
+
+      major = int(tag_groups[0])
+      minor = int(tag_groups[1])
+      micro = tag_groups[2]
+
+      assert major
+      assert minor
+
+      if int(year) == major:
+       if int(month) == minor:
+        if micro:
+         new_tag = "{}.{}".format(current_tag, str(int(micro) + 1))
+        else:
+         new_tag = "{}.{}".format(current_tag, str(1))
+      else:
+       # note/fred: in all other cases we restart the numbering
+       new_tag = current_tag
+
+       if int(year) > major:
+        log.warning("year is from the future?")
+       
+       if (int(year) == major and int(month) > minor):
+        log.warning("month is from the future?")
+
+     else:
+      log.warning("last tag does not match the tag spec, or unknown tag found -- setting a new tag")
+      new_tag = current_tag
+
+    else:
+     log.debug("starting from zero")
+     new_tag = current_tag
+
+   assert new_tag
+
+   log.debug("new tag: %s", new_tag)
+
+   ################################
+   # note/fred: read existing changelog
+
+   changelog_path = "CHANGELOG.md"
+   is_changelog_existing, changelog_header_str, changelog_prev_content_str = extract_existing_changelog_content(changelog_path, new_tag, is_first_release)
+
+   # note/fred: file doesn't exist, so generate a new header
+   if not is_changelog_existing:
+    with io.StringIO() as changelog_header:
+     # changelog_header.write("<!--- generated: header -->")
+     changelog_header.write("{}\n".format("# Changelog"))
+     changelog_header.write("\n")
+     changelog_header.write("All notable changes in this repository will be documented in this file.\n")
+     changelog_header.write("\n")
+     changelog_header.write("This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),\n")
+     changelog_header.write("and the project uses a calendar versioning scheme, 'year.month[.revision]'.\n")
+     changelog_header.write("\n")
+     changelog_header.write("[TOC]\n")
+     changelog_header.write("\n")
+     changelog_header.write("## [Unreleased]\n")
+     changelog_header.write("\n")
+     changelog_header.flush()
+
+     changelog_header.seek(0)
+     changelog_header_str = changelog_header.read()
+
+   datestr = now.strftime("%Y-%m-%d")
+   repo_name = "aurizon-data-science/roadie"
+   changelog_content = generate_changelog_content(datestr, latest_tag, new_tag, repo_name, changes_pivoted, is_first_release)
+
+   changelog_str = changelog_header_str + changelog_content + changelog_prev_content_str
+
+   # todo/fred: take a backup of the existing changelog just in case until we know
+   # this operation worked
+
+   if not is_dry_run:
+    with open(changelog_path, "w") as new_changelog:
+     new_changelog.write(changelog_str)
+
+   if is_preview_changelog:
+    print("Changelog Preview".center(80, "-"))
+    print(changelog_str, end="", flush=True)
+    print("-" * 80)
+
+  else:
+   log.info("no changes was parsed from the commit history, ignoring release")
+
+ else:
+  assert False  # todo/fred: diagnose
+
+
+def cli(cmd) -> (bool, str):
+ result = subprocess.run(cmd.split(" "), capture_output=subprocess.PIPE)
+ return result.returncode == 0, result.stdout.decode("utf-8").rstrip()
+
+
+def parse_git_commits(string, pattern, type_pattern):
+
+ changes = []
+ num_commits = 0
+ num_commits_to_report = 0
+
+ while (1):
+
+  line = string.readline()
+  if line == "":
+   break
+
+  stripped_line = line.rstrip()
+  if len(stripped_line) > 0 and stripped_line[0] == 'g':
+
+   result = pattern.match(line)
+   if result:
+    commit_hash = result.group(1)
+    subject = result.group(2)
+
+    # log.debug("commit=%d hash=%s subject='%s'", num_commits, commit_hash, subject)
+
+    num_commits += 1
+
+    #######################
+    # note/fred: parse type
+
+    type_result = type_pattern.match(subject)
+    if type_result:
+     subject_type = type_result.group(1).strip()
+     subject_value = type_result.group(2).strip()
+     log.debug("type: '%s', value: '%s'", subject_type, subject_value)
+    else:
+     # note/fred: not a type
+     log.debug("subject '%s' does not contain a type -- skipping", subject)
+     continue;
+
+    assert subject_type
+    assert subject_value
+
+    # todo/fred: consider max number of commits supported
+    if num_commits > 99999:
+     assert False
+
+    #######################
+    # note/fred: parse body
+
+    num_lines = 0
+    whole_body = ""
+    while (1):
+     body = string.readline().rstrip()
+     num_lines += 1
+
+     if body == "" or body == "EOC":
+      break
+
+     whole_body += body
+
+     if num_lines > 999:
+      assert False
+     # todo/fred: consider max number of lines in body comment supported
+
+    if whole_body:
+     log.debug("body='%s'", whole_body)
+
+    change = (num_commits_to_report, commit_hash, subject_type, subject_value, whole_body)
+    changes.append(change)
+
+    num_commits_to_report += 1
+
+   else:  # if type_result:
+    # note/fred: commit was somehow malformed or missing
+    assert False  # todo/fred: diagnose
+
+ return changes
+
+
+def extract_existing_changelog_content(changelog_path, release_version, is_first_release) -> (bool, str, str):
+
+ is_changelog_existing = os.path.exists(changelog_path)
+
+ if is_changelog_existing:
+  log.debug("changelog '%s' exists, appending our changes", changelog_path)
+ else:
+  log.debug("no changelog '%s' found, creating a new one", changelog_path)
+
+ ################################
+ # note/fred: construct changelog
+
+ # todo/fred: should we allow to create initial releases if we already have a changelog?
+ # maybe the idea of a first release at all is pretty crap
+ # This tool is a one way street, it just adds new informtion not verify that the old
+ # changes line up with the commit log
+ if not is_changelog_existing and is_first_release:
+  raise NotImplementedError()
+
+  # todo/fred:
+  # if there is a body, we might want to give it more attention with it's own section
+
+ changelog_prev_content_str = ""
+ changelog_header_str = ""
+
+ if is_changelog_existing:
+
+  # todo/fred: read the current one and find where to append
+  with open(changelog_path, "r") as existing_changelog:
+
+   CHANGE_PATTERN = R"<a name='(.*)'></a>## "
+   change_pattern = re.compile(CHANGE_PATTERN)
+
+   last_pos = 0
+   num_lines = 0
+   is_prev_tag_found_in_changelog = False
+   while 1:
+    
+    last_pos = existing_changelog.tell()
+    line = existing_changelog.readline()
+    
+    # this_pos = existing_changelog.tell()
+    if not line:
+     break
+
+    num_lines += 1
+
+    if line.startswith("<a name='"):
+
+     change_result = change_pattern.match(line)
+     if change_result and change_result.group(0) == release_version:
+      # todo/fred: here we can provide the option to replace the change rather than error out
+      log.fatal("Release '%s' already exists in the changelog", release_version)
+      exit(1)
+
+     # @bug
+     # todo/fred: this last position isn't splitting the file where we want it to
+
+     existing_changelog.seek(last_pos)
+     is_prev_tag_found_in_changelog = True
+
+     # note/fred: the rest of it is now considered old changes
+     changelog_prev_content_str = existing_changelog.read()
+     break
+
+   # todo/fred: all kinds of wierd edge cases here... could we map it out visually perhaps?
+
+   if not is_prev_tag_found_in_changelog:
+    log.warning("No previous release was found in the file, appending changes to the end of the file")
+    is_force_overwrite_enabled = True
+    if not is_force_overwrite_enabled:
+     exit(1)
+
+   existing_changelog.seek(0)
+   # @bug?
+   # note/fred: there is something odd with win32 here, maybe the newlines are strange or something?
+   changelog_header_str = existing_changelog.read(last_pos - num_lines + 1)
+
+ return is_changelog_existing, changelog_header_str, changelog_prev_content_str
+
+
+def generate_changelog_content(datestr, prev_version, new_version, repo_name, changes_pivoted, is_first_release) -> str:
+
+ # todo/fred: make sure prev_tag is not the same as the current tag
+ assert prev_version != new_version
+
+ with io.StringIO() as changelog:
+
+  changelog.write("<a name='{0}'></a>## [{0}]".format(new_version))
+
+  # compare string
+  if not is_first_release:
+   compare_url = "https://github.com/{}/compare/{}...{}".format(
+    repo_name, prev_version, new_version
+   )
+   changelog.write("({})".format(compare_url))
+
+  # date
+  changelog.write(" - {}\n".format(datestr))
+  changelog.write("\n")
+
+  # changes
+  for category, changes in changes_pivoted.items():
+   changelog.write("### {}\n".format(category.title()))
+   changelog.write("\n")
+
+   for commit_hash, change, body in changes:
+    changelog.write("* {} ([{}](https://github.com/{}/commit/{}))\n".format(change.capitalize(), commit_hash[:7], repo_name, commit_hash))
+
+    if body != "":
+     changelog.write("{}\n".format(body))
+
+  changelog.write("\n")
+  changelog.flush()
+
+  changelog.seek(0)
+  changelog_updates_str = changelog.read()
+
+ return changelog_updates_str
+
+
+if __name__ == '__main__':
+ main()
