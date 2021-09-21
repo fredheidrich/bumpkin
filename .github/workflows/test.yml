@@ -7,7 +7,7 @@ jobs:
     matrix:
       python-version: ['3.6', '3.7', '3.8', '3.9']
   steps:
-    - uses: checkout@v2
+    - uses: actions/checkout@v2
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
@@ -16,6 +16,7 @@ jobs:
     - run: |
         pip install pip-tools
         pip-sync dev/requirements-dev.txt
+    # todo/fred: probably don't want to collect coverage for all of these runs
     - run: coverage run -m pytest
     # todo/fred: enable code coverage
     # - uses: codecov/codecov-action@v1
