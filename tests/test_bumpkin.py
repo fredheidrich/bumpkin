@@ -64,16 +64,20 @@ FAKE_BODY = (
 """
 )
 
+WINDOWS_LINE_ENDING = R'\r\n'
+UNIX_LINE_ENDING = R'\n'
+
 @pytest.fixture
 def old_fake_changelog_file():
 
 	string = FAKE_HEADER + FAKE_BODY
+	string_converted = string.replace(WINDOWS_LINE_ENDING, UNIX_LINE_ENDING)
 
 	# arrange
 	with open(NON_CHANGELOG_FILE_PATH, "w") as testfile:
-		testfile.write(string)
+		testfile.write(string_converted)
 
-	yield	string
+	yield string_converted
 
 	# cleanup
 	os.remove(NON_CHANGELOG_FILE_PATH)
@@ -92,8 +96,8 @@ def test_add_to_existing_changelog(old_fake_changelog_file):
 	release_version = "2021.9"
 	result = bumpkin.extract_existing_changelog_content(NON_CHANGELOG_FILE_PATH, release_version, is_first_release)
 	assert result[0] == True
-	assert result[1] == FAKE_HEADER
-	assert result[2] == FAKE_BODY
+	assert result[1] == FAKE_HEADER.replace(WINDOWS_LINE_ENDING, UNIX_LINE_ENDING)
+	assert result[2] == FAKE_BODY.replace(WINDOWS_LINE_ENDING, UNIX_LINE_ENDING)
 
 
 ######################
