@@ -25,7 +25,7 @@ OVERVIEW
 
 Unrelated
 - generate a toc
-
+- count loc
 """
 
 import argparse
@@ -495,15 +495,8 @@ def extract_existing_changelog_content(changelog_path, release_version, is_first
  ################################
  # note/fred: construct changelog
 
- # todo/fred: should we allow to create initial releases if we already have a changelog?
- # maybe the idea of a first release at all is pretty crap
- # This tool is a one way street, it just adds new informtion not verify that the old
- # changes line up with the commit log
- if is_changelog_existing and is_first_release:
-  raise NotImplementedError()
-
-  # todo/fred:
-  # if there is a body, we might want to give it more attention with it's own section
+ # todo/fred:
+ # if there is a body, we might want to give it more attention with it's own section
 
  changelog_prev_content_str = ""
  changelog_header_str = ""
