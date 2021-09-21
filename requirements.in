@@ -1,8 +1,0 @@
-
-# dev
-pip-tools
-coverage
-pytest
-pytest-watch
-# ----------
-

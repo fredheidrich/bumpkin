@@ -1,59 +1,34 @@
 """
 
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and the project uses a calendar versioning scheme, 'year.month[.revision]'.
-
-[TOC]
-
-## [Unreleased]
-
-## [[2021.9](https://www.github.com/aurizon-data-science/roadie/compare/v9.3.0...v9.3.1)] - 2021-09-15
-
-### Bug fixes
-
-* content ([a316dd0](https://www.github.com/aurizon-data-science/roadie/commit/a316dd02f5a7d8dee33d99370afda8738985bc10))
-* content ([a316dd0](https://www.github.com/aurizon-data-science/roadie/commit/a316dd02f5a7d8dee33d99370afda8738985bc10))
-extra content
-
-Some changes.
-A body text of changes that has been made.
-
-Adding more files to the stuff.
-Even more things were added here. Changes were indeed made.
-
-
-USAGE
-- create first release if there was none before
-- bump version from current release
-
 OVERVIEW
 - [x] parse tag spec and compare with latest tag
 - [x] bump the version number
 - [x] write changelog
 - [x] append to existing changelog file
 - [x] write some tests
-- [ ] cli options
+- [x] cli options
  - [x] dry run option
-- commit and tag release
+- [x] commit and tag release
 
 - [x] more test
 - [x] code coverage
 
-- [ ] put on github
+- [x] version this module
 
-- ci/cd with GitHub Actions
+- [x] ci/cd with GitHub Actions
 - package wheel
 - publish to pypy
 - cleanup directory/module structure
 - other version formats
 - format output from config
+- create the release using github release
+
+Unrelated
+- generate a toc
+
 """
 
-from dataclasses import dataclass
+import argparse
 import datetime
 import io
 import logging
@@ -70,7 +45,7 @@ SYS_PYTHON2 = 2
 SYS_PYTHON3 = 3
 
 MIN_SUPPORTED_PYTHON_MAJOR = 3
-MIN_SUPPORTED_PYTHON_MINOR = 7
+MIN_SUPPORTED_PYTHON_MINOR = 6
 MIN_SUPPORTED_PYTHON_MICRO = 0
 
 COMMIT_PATTERN = R"^g([a-z0-9]{40}) '(.*)'"
@@ -78,36 +53,48 @@ COMMIT_PATTERN = R"^g([a-z0-9]{40}) '(.*)'"
 log = logging.getLogger(__name__)
 
 
-@dataclass
-class ChangeLogContent:
- is_valid: bool
- header: str
- content: str
-
-
-@dataclass
-class CalendarChangeLog:
- datestr: str
- prev_version: str
- new_version: str
- repo_name: str
- changes_pivoted: dict
- is_first_release: bool
-
-
-@dataclass
-class CLIResult:
- is_valid: bool
- stdout: str
-
-
 def main():
 
- is_dry_run = True
- is_preview_changelog = True
+ parser = argparse.ArgumentParser(description="Standard Bumpkin")
+
+ parser.add_argument("--debug", "-d", default=False, action="store_true")
+ parser.add_argument("--dry-run", default=False, action="store_true")
+
+ parser.add_argument("--preview", "-p", default=False, action="store_true")
+ parser.add_argument("--no-preview", dest="preview", action="store_false")
+ 
+ parser.add_argument("--push", default=False, action="store_true")
+ parser.add_argument("--no-push", dest="push", action="store_false")
+
+ parser.add_argument("--tag", default=False, action="store_true", help="tag the repo with the version")
+ parser.add_argument("--no-tag", dest="tag", action="store_false")
+
+ parser.add_argument("--changelog-filename", "-f", default="CHANGELOG.md")
+ parser.add_argument("--changelog", default=False, action="store_true", help="emit a changelog")
+ parser.add_argument("--no-changelog", dest="changelog", action="store_false")
+
+ parser.add_argument("--version-filename", default="VERSION")
+ parser.add_argument("--version-file", default=False, action="store_true")
+ parser.add_argument("--no-version-file", dest="version-file", action="store_false")
+ 
+ args = parser.parse_args()
+
+ use_tag = args.tag
+ is_debug = args.debug
+ push_tags = args.push
+ is_dry_run = args.dry_run
+ is_preview_changelog = args.preview
+ changelog_path = args.changelog_filename
+ emit_changes_to_changelog = args.changelog
+ use_version_file = args.version_file
+ version_file = args.version_filename
 
  logging.basicConfig()
- log.setLevel(logging.DEBUG)
+
+ if is_debug:
+  log.setLevel(logging.DEBUG)
+ else:
+  log.setLevel(logging.INFO)
 
  #############################
  # note/fred: context cracking
@@ -157,7 +144,10 @@ def main():
   # log.debug(f"git found at '{req_out.stdout.decode('utf-8').rstrip()}'")
   git_found = (req_out.returncode == 0)
  elif SYS_PLATFORM == SYS_LINUX:
-  raise NotImplementedError("find git on linux is not implemented")
+  is_valid, which_git = cli(["which", "git"])
+  git_found = is_valid
+ else:
+  raise NotImplementedError("os not supported yet")
 
  assert git_found
 
@@ -166,6 +156,31 @@ def main():
   exit(1)
 
  # todo/fred: fetch which version of git we are dealing with
+
+ #####################################
+ # note/fred: github details
+
+ is_valid, git_remote_out = cli(["git", "remote"])
+ if not is_valid:
+  log.fatal("could not fetch git remote")
+  exit(1)
+
+ git_remote = git_remote_out
+ log.debug("using remote '%s'", git_remote)
+
+ is_valid, git_remote_get_url_out = cli(["git", "remote", "get-url", git_remote])
+ if not is_valid:
+  log.fatal("could not fetch git remote url")
+  exit(1)
+
+ git_remote_url = git_remote_get_url_out
+ if not git_remote_url.startswith("https://github.com") or not git_remote_url.endswith(".git"):
+  log.fatal("repo '%s' doesn't seem to be a github repository", git_remote_url)
+  exit(1)
+
+ assert len(git_remote_url) > 4
+ repo_url = git_remote_url[:-4]
+ log.debug("git repo url: %s", repo_url)
 
  #
  #############################
@@ -183,24 +198,19 @@ def main():
 
  # note/fred: here we are running a git command and parsing the output
 
- is_valid, latest_tag = cli("git describe --tags --abbrev=0")
- log.debug("tag: %s", latest_tag)
- if not is_valid:
+ is_valid, git_describe_tags_out = cli(["git", "describe", "--tags", "--abbrev=0"])
+
+ if not is_valid or lates_tag == "":
   log.warning("No tags were found -- treating as first release using tag '%s'", latest_tag)
   is_first_release = True
 
- # git_tag_out = subprocess.run(["git", "describe", "--tags", "--abbrev=0"], capture_output=subprocess.PIPE)
- # if git_tag_out.returncode == 0:
-
- #  string = io.StringIO(git_tag_out.stdout.decode("utf-8"))
- #  latest_tag = string.read().rstrip()
- #  log.debug("tag: %s", latest_tag)
-
- # else:
- #  log.warning("No tags were found -- treating as first release using tag '%s'", latest_tag)
- #  is_first_release = True
-
- assert latest_tag
+  release_without_tags = True
+  if not release_without_tags:
+    exit(1)
+ 
+ else:
+  latest_tag = git_describe_tags_out
+  log.debug("latest tag: %s", latest_tag)
 
  #
  ##############################
@@ -214,12 +224,12 @@ def main():
  log.debug(git_cmd)
 
  type_pattern = re.compile(R"(.*):(.*)")
+ pattern = re.compile(COMMIT_PATTERN)
 
- git_out = subprocess.run(git_cmd, capture_output=subprocess.PIPE)
- if git_out.returncode == 0:
+ is_valid, git_out = cli(git_cmd)
+ if is_valid:
 
-  string = io.StringIO(git_out.stdout.decode("utf-8"))
-  pattern = re.compile(COMMIT_PATTERN)
+  string = io.StringIO(git_out)
 
   changes = parse_git_commits(string, pattern, type_pattern)
   num_commits_to_report = len(changes)
@@ -299,58 +309,100 @@ def main():
    log.debug("new tag: %s", new_tag)
 
    ################################
+   # note/fred: maintain a version file in addition to tag
+
+   if use_version_file and not is_dry_run:
+    log.debug("emitting version file: %s", version_file)
+    with open(version_file, "w") as file:
+     file.write(new_tag)
+
+   ################################
    # note/fred: read existing changelog
 
-   changelog_path = "CHANGELOG.md"
-   is_changelog_existing, changelog_header_str, changelog_prev_content_str = extract_existing_changelog_content(changelog_path, new_tag, is_first_release)
+   if emit_changes_to_changelog:
+    is_changelog_existing, changelog_header_str, changelog_prev_content_str = extract_existing_changelog_content(changelog_path, new_tag, is_first_release)
 
-   # note/fred: file doesn't exist, so generate a new header
-   if not is_changelog_existing:
-    with io.StringIO() as changelog_header:
-     # changelog_header.write("<!--- generated: header -->")
-     changelog_header.write("{}\n".format("# Changelog"))
-     changelog_header.write("\n")
-     changelog_header.write("All notable changes in this repository will be documented in this file.\n")
-     changelog_header.write("\n")
-     changelog_header.write("This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),\n")
-     changelog_header.write("and the project uses a calendar versioning scheme, 'year.month[.revision]'.\n")
-     changelog_header.write("\n")
-     changelog_header.write("[TOC]\n")
-     changelog_header.write("\n")
-     changelog_header.write("## [Unreleased]\n")
-     changelog_header.write("\n")
-     changelog_header.flush()
+    # note/fred: file doesn't exist, so generate a new header
+    if not is_changelog_existing:
+     with io.StringIO() as changelog_header:
+      # changelog_header.write("<!--- generated: header -->")
+      changelog_header.write("{}\n".format("# Changelog"))
+      changelog_header.write("\n")
+      changelog_header.write("All notable changes in this repository will be documented in this file.\n")
+      changelog_header.write("\n")
+      changelog_header.write("This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),\n")
+      changelog_header.write("and the project uses a calendar versioning scheme, 'year.month[.revision]'.\n")
+      changelog_header.write("\n")
+      changelog_header.write("## [Unreleased]\n")
+      changelog_header.write("\n")
+      changelog_header.flush()
 
-     changelog_header.seek(0)
-     changelog_header_str = changelog_header.read()
+      changelog_header.seek(0)
+      changelog_header_str = changelog_header.read()
 
-   datestr = now.strftime("%Y-%m-%d")
-   repo_name = "aurizon-data-science/roadie"
-   changelog_content = generate_changelog_content(datestr, latest_tag, new_tag, repo_name, changes_pivoted, is_first_release)
+    datestr = now.strftime("%Y-%m-%d")
+    changelog_content = generate_changelog_content(datestr, latest_tag, new_tag, repo_url, changes_pivoted, is_first_release)
 
-   changelog_str = changelog_header_str + changelog_content + changelog_prev_content_str
+    changelog_str = changelog_header_str + changelog_content + changelog_prev_content_str
 
-   # todo/fred: take a backup of the existing changelog just in case until we know
-   # this operation worked
+    # todo/fred: take a backup of the existing changelog just in case until we know
+    # this operation worked
+
+    if not is_dry_run:
+     with open(changelog_path, "w") as new_changelog:
+      new_changelog.write(changelog_str)
+
+    if is_preview_changelog:
+     print("Changelog Preview".center(80, "-"))
+     print(changelog_str, end="", flush=True)
+     print("-" * 80)
+
+    #################################
+    # note/fred: commit changelog
+
+    # todo/fred: actually commit the changelog
+
+   else:
+    pass  # do nothing
+
+   ##################################
+   # note/fred: tag and push version
+
+   git_tag_cmd = ["git", "tag", "-a", new_tag, "-m", "'version {}'".format(new_tag)]
+   git_push_cmd = ["git", "push", git_remote, new_tag]
 
    if not is_dry_run:
-    with open(changelog_path, "w") as new_changelog:
-     new_changelog.write(changelog_str)
+    
+    if use_tag:
+     is_valid, git_tag_out = cli(git_tag_cmd)
+     if is_valid:
 
-   if is_preview_changelog:
-    print("Changelog Preview".center(80, "-"))
-    print(changelog_str, end="", flush=True)
-    print("-" * 80)
+      if push_tags:
+       is_valid, git_push_tags_out = cli(git_push_cmd)
+       if not is_valid:
+        log.fatal("could not push to remote, aborting")
+        exit(1)
+     
+     else:
+      log.fatal("could not create a tag on current commit, aborting")
+      exit(1)
+
+   else:
+    log.info(" ".join(git_tag_cmd))
+    log.info(" ".join(git_push_cmd))
+
+   # todo/fred: use the github api to create a release from this tag now
 
   else:
    log.info("no changes was parsed from the commit history, ignoring release")
 
  else:
-  assert False  # todo/fred: diagnose
+  log.fatal("could not run git commant '%a', aborting", git_cmd)
+  exit(1)
 
 
-def cli(cmd) -> (bool, str):
- result = subprocess.run(cmd.split(" "), capture_output=subprocess.PIPE)
+def cli(argument_list) -> (bool, str):
+ result = subprocess.run(argument_list, capture_output=subprocess.PIPE)
  return result.returncode == 0, result.stdout.decode("utf-8").rstrip()
 
 
@@ -447,7 +499,7 @@ def extract_existing_changelog_content(changelog_path, release_version, is_first
  # maybe the idea of a first release at all is pretty crap
  # This tool is a one way street, it just adds new informtion not verify that the old
  # changes line up with the commit log
- if not is_changelog_existing and is_first_release:
+ if is_changelog_existing and is_first_release:
   raise NotImplementedError()
 
   # todo/fred:
@@ -483,7 +535,7 @@ def extract_existing_changelog_content(changelog_path, release_version, is_first
      change_result = change_pattern.match(line)
      if change_result and change_result.group(0) == release_version:
       # todo/fred: here we can provide the option to replace the change rather than error out
-      log.fatal("Release '%s' already exists in the changelog", release_version)
+      log.fatal("Version '%s' already exists in the changelog", release_version)
       exit(1)
 
      # @bug
@@ -512,10 +564,8 @@ def extract_existing_changelog_content(changelog_path, release_version, is_first
  return is_changelog_existing, changelog_header_str, changelog_prev_content_str
 
 
-def generate_changelog_content(datestr, prev_version, new_version, repo_name, changes_pivoted, is_first_release) -> str:
+def generate_changelog_content(datestr, prev_version, new_version, repo_url, changes_pivoted, is_first_release) -> str:
 
- # todo/fred: make sure prev_tag is not the same as the current tag
- assert prev_version != new_version
 
  with io.StringIO() as changelog:
 
@@ -523,8 +573,9 @@ def generate_changelog_content(datestr, prev_version, new_version, repo_name, ch
 
   # compare string
   if not is_first_release:
-   compare_url = "https://github.com/{}/compare/{}...{}".format(
-    repo_name, prev_version, new_version
+   assert prev_version != new_version
+   compare_url = "{}/compare/{}...{}".format(
+    repo_url, prev_version, new_version
    )
    changelog.write("({})".format(compare_url))
 
@@ -538,14 +589,14 @@ def generate_changelog_content(datestr, prev_version, new_version, repo_name, ch
    changelog.write("\n")
 
    for commit_hash, change, body in changes:
-    changelog.write("* {} ([{}](https://github.com/{}/commit/{}))\n".format(change.capitalize(), commit_hash[:7], repo_name, commit_hash))
+    changelog.write("* {} ([{}]({}/commit/{}))\n".format(change.capitalize(), commit_hash[:7], repo_url, commit_hash))
 
     if body != "":
      changelog.write("{}\n".format(body))
 
-  changelog.write("\n")
-  changelog.flush()
+   changelog.write("\n")
 
+  changelog.flush()
   changelog.seek(0)
   changelog_updates_str = changelog.read()
 

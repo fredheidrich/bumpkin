@@ -1,0 +1,21 @@
+name: Run tests
+on: [push, pull-request]
+jobs:
+ Run-Pytest:
+  runs-on: ubuntu-latest
+  strategy:
+    matrix:
+      python-version: ['3.6', '3.7', '3.8', '3.9']
+  steps:
+    - uses: checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+       python-version: ${{ matrix.python-version }}
+       architecture: x64
+    - run: |
+        pip install pip-tools
+        pip-sync dev/requirements-dev.txt
+    - run: coverage run -m pytest
+    # todo/fred: enable code coverage
+    # - uses: codecov/codecov-action@v1
