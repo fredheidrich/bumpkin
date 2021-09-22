@@ -17,8 +17,6 @@ jobs:
         pip install pip-tools
         pip-sync dev/requirements-dev.txt
     - run: python -m pytest
-    # todo/fred: enable code coverage
-    # - uses: codecov/codecov-action@v1
 
  Code-Coverage:
   runs-on: ubuntu-latest
@@ -32,7 +30,9 @@ jobs:
     - run: |
         pip install pip-tools
         pip-sync dev/requirements-dev.txt
-    - run: coverage run -m pytest
+    - run: |
+        coverage run --source=bumpkin -m pytest
+        coverage xml
     - uses: codecov/codecov-action@v2
       with:
         flags: unittests
