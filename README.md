@@ -1,4 +1,6 @@
 
+[![codecov](https://codecov.io/gh/fredheidrich/bumpkin/branch/main/graph/badge.svg?token=WCM92TNZCA)](https://codecov.io/gh/fredheidrich/bumpkin)
+
 # Standard Bumpkin
 
 # Usage
