@@ -16,9 +16,6 @@ OVERVIEW
 - [x] version this module
 
 - [x] ci/cd with GitHub Actions
-- package wheel
-- publish to pypy
-- cleanup directory/module structure
 - other version formats
 - format output from config
 - create the release using github release
@@ -63,6 +60,7 @@ def release(args):
  emit_changes_to_changelog = args.changelog
  use_version_file = args.version_file
  version_file = args.version_filename
+ is_committing = args.commit
 
  logging.basicConfig()
 
@@ -148,7 +146,7 @@ def release(args):
   log.fatal("could not fetch git remote url")
   exit(1)
 
- git_remote_url = git_remote_get_url_out
+ git_remote_url = git_remote_get_url_out.strip()
  if not git_remote_url.startswith("https://github.com") or not git_remote_url.endswith(".git"):
   log.fatal("repo '%s' doesn't seem to be a github repository", git_remote_url)
   exit(1)
@@ -156,6 +154,16 @@ def release(args):
  assert len(git_remote_url) > 4
  repo_url = git_remote_url[:-4]
  log.debug("git repo url: %s", repo_url)
+
+ is_valid, git_rev_parse_out = cli(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+ if not is_valid:
+  log.fatal("could not read current branch")
+  exit(1)
+
+ git_branch = git_rev_parse_out.strip()
+ assert git_branch
+
+ log.debug("git branch: %s", git_branch)
 
  #
  #############################
@@ -175,7 +183,7 @@ def release(args):
 
  is_valid, git_describe_tags_out = cli(["git", "describe", "--tags", "--abbrev=0"])
 
- if not is_valid or lates_tag == "":
+ if not is_valid or latest_tag == "":
   log.warning("No tags were found -- treating as first release using tag '%s'", latest_tag)
   is_first_release = True
 
@@ -334,7 +342,9 @@ def release(args):
     datestr = now.strftime("%Y-%m-%d")
     changelog_content = generate_changelog_content(datestr, latest_tag, new_tag, repo_url, changes_pivoted, is_first_release)
 
-    changelog_str = os.linesep.join([changelog_header_str, changelog_content, changelog_prev_content_str])
+    # todo/fred: @bug we want to maintain native line endings, is that a thing?
+    # changelog_str = os.linesep.join([changelog_header_str, changelog_content, changelog_prev_content_str])
+    changelog_str = "".join([changelog_header_str, changelog_content, changelog_prev_content_str])
 
     # todo/fred: take a backup of the existing changelog just in case until we know
     # this operation worked
@@ -351,7 +361,29 @@ def release(args):
     #################################
     # note/fred: commit changelog
 
-    # todo/fred: actually commit the changelog
+    files_to_add = [changelog_path]
+    if use_version_file:
+     files_to_add += [version_file]
+
+    git_add_cmd = ["git", "add"] + files_to_add
+    git_commit_cmd = ["git", "commit", "-m", "'version {}'".format(new_tag)]
+
+    if is_dry_run:
+     log.info(" ".join(git_add_cmd))
+     log.info(" ".join(git_commit_cmd))
+
+    elif is_committing:
+     is_valid, _ = cli(git_add_cmd)
+     if is_valid:
+      is_valid, _ = cli(git_commit_cmd)
+      if is_valid:
+        pass
+      else:
+       log.fatal("could not commit changelog")
+       exit(1)
+     else:
+      log.fatal("could not add changelog")
+      exit(1)
 
    else:
     pass  # do nothing
@@ -359,11 +391,18 @@ def release(args):
    ##################################
    # note/fred: tag and push version
 
-   git_tag_cmd = ["git", "tag", "-a", new_tag, "-m", "'version {}'".format(new_tag)]
-   git_push_cmd = ["git", "push", git_remote, new_tag]
+   branches_to_push = [new_tag]
+   if emit_changes_to_changelog:
+    branches_to_push += [git_branch]
 
-   if not is_dry_run:
-    
+   git_tag_cmd = ["git", "tag", "-a", new_tag, "-m", "'version {}'".format(new_tag)]
+   git_push_cmd = ["git", "push", "--atomic", git_remote] + list(reversed(branches_to_push))
+
+   if is_dry_run:
+    log.info(" ".join(git_tag_cmd))
+    log.info(" ".join(git_push_cmd))
+
+   else:    
     if use_tag:
      is_valid, git_tag_out = cli(git_tag_cmd)
      if is_valid:
@@ -377,10 +416,6 @@ def release(args):
      else:
       log.fatal("could not create a tag on current commit, aborting")
       exit(1)
-
-   else:
-    log.info(" ".join(git_tag_cmd))
-    log.info(" ".join(git_push_cmd))
 
    # todo/fred: use the github api to create a release from this tag now
 

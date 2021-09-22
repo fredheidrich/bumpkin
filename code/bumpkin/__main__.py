@@ -21,6 +21,9 @@ def main():
  parser.add_argument("--tag", default=False, action="store_true", help="tag the repo with the version")
  parser.add_argument("--no-tag", dest="tag", action="store_false")
 
+ parser.add_argument("--commit", default=False, action="store_true", help="commit changelog to history")
+ parser.add_argument("--no-commit", dest="commit", action="store_false")
+
  parser.add_argument("--changelog-filename", "-f", default="CHANGELOG.md")
  parser.add_argument("--changelog", default=False, action="store_true", help="emit a changelog")
  parser.add_argument("--no-changelog", dest="changelog", action="store_false")
