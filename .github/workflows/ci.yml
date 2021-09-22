@@ -2,12 +2,15 @@ name: Run tests
 on: [push, pull_request]
 jobs:
  Python-Tests:
-  name: ${{ matrix.os }}-${{ matrix.python-version }}
-  runs-on: ${{ matrix.os }}-latest
+  name: ${{ matrix.sys.os }}-${{ matrix.python-version }}
+  runs-on: ${{ matrix.sys.os }}-latest
   strategy:
     fail-fast: false
     matrix:
-      os: ['macOS', 'Windows', 'Ubuntu']
+      sys:
+        - { os: 'macOS', shell: 'terminal' }
+        - { os: 'Windows', shell: 'bash' }
+        - { os: 'Ubuntu', shell: 'bash' }
       python-version: ['3.6', '3.7', '3.8', '3.9']
   steps:
     - uses: actions/checkout@v2
@@ -23,7 +26,7 @@ jobs:
     - run: |
         coverage run --source=bumpkin -m pytest
         coverage xml
-      shell: bash
+      shell: ${{ matrix.sys.shell }}
     - uses: codecov/codecov-action@v2
       with:
         flags: unittests
