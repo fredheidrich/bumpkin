@@ -6,98 +6,99 @@ import pytest
 from bumpkin import bumpkin
 
 
+WINDOWS_LINE_ENDING = R'\r\n'
+UNIX_LINE_ENDING = R'\n'
+
+
 def test_changelog_generation():
 
-	datestr = "2021-09-18"
-	prev_version = "2021.9"
-	new_version = "2021.9.1"
-	repo_name = "foo/bar"
-	changes_pivoted = {}
-	is_first_release = True
+ datestr = "2021-09-18"
+ prev_version = "2021.9"
+ new_version = "2021.9.1"
+ repo_name = "foo/bar"
+ changes_pivoted = {}
+ is_first_release = True
 
-	result = bumpkin.generate_changelog_content(datestr, prev_version, new_version, repo_name, changes_pivoted, is_first_release)
+ result = bumpkin.generate_changelog_content(datestr, prev_version, new_version, repo_name, changes_pivoted, is_first_release)
 
-	assert result
-
-
-def test_changelog_extraction():
-
-	is_first_release = False
-	release_version = "2021.9"
-	changelog_path = "FILE_THAT_DOES_NOT_EXIST.foo"
-
-	result = bumpkin.extract_existing_changelog_content(changelog_path, release_version, is_first_release)
-	assert result[0] == False
-
-
-NON_CHANGELOG_FILE_PATH = "TESTFILE_THAT_DOES_EXIST.md"
+ assert result
 
 
 @pytest.fixture
 def old_non_changelog_file():
 
-	# arrange
-	string = "foo bar baz"
-	with open(NON_CHANGELOG_FILE_PATH, "w") as testfile:
-		testfile.write(string)
+ # arrange
+ string = "foo bar baz"
+ filepath = "SOME_RANDOM_FILE.md"
+ with open(filepath, "w") as testfile:
+  testfile.write(string)
 
-	yield	string
+ yield filepath, string, ""
 
-	# cleanup
-	os.remove(NON_CHANGELOG_FILE_PATH)
+ # cleanup
+ os.remove(filepath)
 
-FAKE_HEADER = (
-"""# Changelog
+
+def test_add_to_existing_invalid_changelog(old_non_changelog_file):
+ release_version = "2021.9"
+ 
+ with open(old_non_changelog_file[0], "r") as testfile:
+  changelog_str = testfile.read()
+
+ result = bumpkin.split_changelog_header_and_content(changelog_str, release_version)
+ assert result[0] == "foo bar baz"
+ assert result[1] == ""
+
+
+@pytest.fixture
+def old_fake_changelog_file():
+
+ header = (
+ """# Changelog
 
 [Unreleased]
 * foo
 * bar
 * baz
+
 """
-)
-FAKE_BODY = (
-"""<a name='2021.9'></a>## [2021.9]
+ )
+ body = (
+ """<a name='2021.9'></a>## [2021.9]
 
 ### Additions
 * foobar
 
+<a name='2021.8'></a>## [2021.8]
+
+### Changes
+* foo
+* var
+
 """
-)
+ )
+ filepath = "TESTFILE_THAT_DOES_EXIST.md"
+ string = header + body
 
-WINDOWS_LINE_ENDING = R'\r\n'
-UNIX_LINE_ENDING = R'\n'
+ # arrange
+ with open(filepath, "w") as testfile:
+  testfile.write(string)
 
-@pytest.fixture
-def old_fake_changelog_file():
+ yield filepath, header, body
 
-	string = FAKE_HEADER + FAKE_BODY
-	string_converted = string.replace(WINDOWS_LINE_ENDING, UNIX_LINE_ENDING)
-
-	# arrange
-	with open(NON_CHANGELOG_FILE_PATH, "w") as testfile:
-		testfile.write(string_converted)
-
-	yield string_converted
-
-	# cleanup
-	os.remove(NON_CHANGELOG_FILE_PATH)
-
-
-def test_add_to_existing_invalid_changelog(old_non_changelog_file):
-	is_first_release = True
-	release_version = "2021.9"
-	result = bumpkin.extract_existing_changelog_content(NON_CHANGELOG_FILE_PATH, release_version, is_first_release)
-	assert result[0] == True
-	assert result[1] == "foo bar baz"
-	
+ # cleanup
+ os.remove(filepath)
+ 
 
 def test_add_to_existing_changelog(old_fake_changelog_file):
-	is_first_release = True
-	release_version = "2021.9"
-	result = bumpkin.extract_existing_changelog_content(NON_CHANGELOG_FILE_PATH, release_version, is_first_release)
-	assert result[0] == True
-	assert result[1] == FAKE_HEADER.replace(WINDOWS_LINE_ENDING, UNIX_LINE_ENDING)
-	assert result[2] == FAKE_BODY.replace(WINDOWS_LINE_ENDING, UNIX_LINE_ENDING)
+ release_version = "2021.9"
+ 
+ with open(old_fake_changelog_file[0], "r") as testfile:
+  changelog_str = testfile.read()
+
+ result = bumpkin.split_changelog_header_and_content(changelog_str, release_version)
+ assert result[0] == old_fake_changelog_file[1]
+ assert result[1] == old_fake_changelog_file[2]
 
 
 ######################
@@ -105,16 +106,16 @@ def test_add_to_existing_changelog(old_fake_changelog_file):
 
 
 def test_cli():
-	pass
+ pass
 
 def test_parsing_git_commits():
-	pass
+ pass
 
 def test_no_previous_tags_exists():
-	pass
+ pass
 
 def test_bump_existing_version_number():
-	pass
+ pass
 
 def test_wrong_version_spec_found():
-	pass
+ pass

@@ -320,10 +320,26 @@ def main():
    # note/fred: read existing changelog
 
    if emit_changes_to_changelog:
-    is_changelog_existing, changelog_header_str, changelog_prev_content_str = extract_existing_changelog_content(changelog_path, new_tag, is_first_release)
 
-    # note/fred: file doesn't exist, so generate a new header
-    if not is_changelog_existing:
+    changelog_str = ""
+    changelog_prev_content_str = ""
+    changelog_header_str = ""
+
+    is_changelog_existing = os.path.exists(changelog_path)
+
+    if is_changelog_existing:
+
+     log.debug("changelog '%s' exists, appending our changes", changelog_path)
+     with open(changelog_path, "r") as existing_changelog:
+      changelog_str = existing_changelog.read()
+
+     (changelog_header_str,
+      changelog_prev_content_str) = split_changelog_header_and_content(changelog_str, new_tag)
+
+    else:
+     log.debug("no changelog '%s' found, creating a new one", changelog_path)
+
+     # note/fred: generate a new header
      with io.StringIO() as changelog_header:
       # changelog_header.write("<!--- generated: header -->")
       changelog_header.write("{}\n".format("# Changelog"))
@@ -343,7 +359,7 @@ def main():
     datestr = now.strftime("%Y-%m-%d")
     changelog_content = generate_changelog_content(datestr, latest_tag, new_tag, repo_url, changes_pivoted, is_first_release)
 
-    changelog_str = changelog_header_str + changelog_content + changelog_prev_content_str
+    changelog_str = os.linesep.join([changelog_header_str, changelog_content, changelog_prev_content_str])
 
     # todo/fred: take a backup of the existing changelog just in case until we know
     # this operation worked
@@ -483,78 +499,65 @@ def parse_git_commits(string, pattern, type_pattern):
  return changes
 
 
-def extract_existing_changelog_content(changelog_path, release_version, is_first_release) -> (bool, str, str):
-
- is_changelog_existing = os.path.exists(changelog_path)
-
- if is_changelog_existing:
-  log.debug("changelog '%s' exists, appending our changes", changelog_path)
- else:
-  log.debug("no changelog '%s' found, creating a new one", changelog_path)
-
- ################################
- # note/fred: construct changelog
-
- # todo/fred:
- # if there is a body, we might want to give it more attention with it's own section
+def split_changelog_header_and_content(changelog_str, release_version) -> (str, str):
 
  changelog_prev_content_str = ""
  changelog_header_str = ""
 
- if is_changelog_existing:
+ with io.StringIO(changelog_str) as existing_changelog:
 
-  # todo/fred: read the current one and find where to append
-  with open(changelog_path, "r") as existing_changelog:
+  CHANGE_PATTERN = R"^<a name='(.*)'></a>## "
+  change_pattern = re.compile(CHANGE_PATTERN)
 
-   CHANGE_PATTERN = R"<a name='(.*)'></a>## "
-   change_pattern = re.compile(CHANGE_PATTERN)
+  line = ""
+  last_pos = 0
+  num_lines = 0
+  is_prev_tag_found_in_changelog = False
+  while 1:
+   
+   last_pos = existing_changelog.tell()
+   line = existing_changelog.readline()
 
-   last_pos = 0
-   num_lines = 0
-   is_prev_tag_found_in_changelog = False
-   while 1:
-    
-    last_pos = existing_changelog.tell()
-    line = existing_changelog.readline()
-    
-    # this_pos = existing_changelog.tell()
-    if not line:
-     break
+   log.debug("line: %s", line)
+   
+   if not line:
+    break
 
-    num_lines += 1
+   num_lines += 1
 
-    if line.startswith("<a name='"):
+   # note/fred: this is the first occurance of an an anchor
+   if line.strip().startswith("<a name='"):
 
-     change_result = change_pattern.match(line)
-     if change_result and change_result.group(0) == release_version:
-      # todo/fred: here we can provide the option to replace the change rather than error out
-      log.fatal("Version '%s' already exists in the changelog", release_version)
-      exit(1)
-
-     # @bug
-     # todo/fred: this last position isn't splitting the file where we want it to
-
-     existing_changelog.seek(last_pos)
-     is_prev_tag_found_in_changelog = True
-
-     # note/fred: the rest of it is now considered old changes
-     changelog_prev_content_str = existing_changelog.read()
-     break
-
-   # todo/fred: all kinds of wierd edge cases here... could we map it out visually perhaps?
-
-   if not is_prev_tag_found_in_changelog:
-    log.warning("No previous release was found in the file, appending changes to the end of the file")
-    is_force_overwrite_enabled = True
-    if not is_force_overwrite_enabled:
+    change_result = change_pattern.match(line)
+    if change_result and change_result.group(0) == release_version:
+     # todo/fred: here we can provide the option to replace or append rather than error out
+     log.fatal("Version '%s' already exists in the changelog", release_version)
      exit(1)
 
-   existing_changelog.seek(0)
-   # @bug?
-   # note/fred: there is something odd with win32 here, maybe the newlines are strange or something?
-   changelog_header_str = existing_changelog.read(last_pos - num_lines + 1)
+    # @bug
+    # todo/fred: this last position isn't splitting the file where we want it to
 
- return is_changelog_existing, changelog_header_str, changelog_prev_content_str
+    existing_changelog.seek(last_pos)
+    is_prev_tag_found_in_changelog = True
+
+    # note/fred: the rest of it is now considered old changes
+    changelog_prev_content_str = existing_changelog.read()
+    break
+
+  # todo/fred: all kinds of wierd edge cases here... could we map it out visually perhaps?
+
+  if not is_prev_tag_found_in_changelog:
+   log.warning("No previous release was found in the file, appending changes to the end of the file")
+   is_force_overwrite_enabled = True
+   if not is_force_overwrite_enabled:
+    exit(1)
+
+  existing_changelog.seek(0)
+  # @bug?
+  # note/fred: there is something odd with win32 here, maybe the newlines are strange or something?
+  changelog_header_str = existing_changelog.read(last_pos)
+
+ return changelog_header_str, changelog_prev_content_str
 
 
 def generate_changelog_content(datestr, prev_version, new_version, repo_url, changes_pivoted, is_first_release) -> str:
