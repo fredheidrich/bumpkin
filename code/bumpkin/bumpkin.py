@@ -20,9 +20,16 @@ OVERVIEW
 - format output from config
 - create the release using github release
 
-Unrelated
+- cleanup meta data
+- tidy up cli arguments (sensible defaults)
+
+CONSIDER
+- stop commit and push if you have uncommitted changes?
+
+UNRELATED
 - generate a toc
 - count loc
+- test different versions of git in CI
 """
 
 import datetime
@@ -49,6 +56,40 @@ COMMIT_PATTERN = R"^g([a-z0-9]{40}) '(.*)'"
 log = logging.getLogger(__name__)
 
 
+def cli_arguments():
+ import argparse
+
+ parser = argparse.ArgumentParser(prog="bumpkin", description="Standard Bumpkin")
+
+ parser.add_argument("--force", "-f", default=False, action="store_true", help="force a version bump if there are new commits, even if no changes were parsed")
+ parser.add_argument("--debug", "-d", default=False, action="store_true")
+ parser.add_argument("--dry-run", default=False, action="store_true")
+
+ parser.add_argument("--preview", default=False, action="store_true")
+ parser.add_argument("--no-preview", dest="preview", action="store_false")
+
+ parser.add_argument("--push", "-p", default=False, action="store_true")
+ parser.add_argument("--no-push", dest="push", action="store_false")
+
+ parser.add_argument("--tag", "-t", default=False, action="store_true", help="tag the repo with the version")
+ parser.add_argument("--no-tag", dest="tag", action="store_false")
+
+ parser.add_argument("--commit", "-c", default=False, action="store_true", help="commit changelog to history")
+ parser.add_argument("--no-commit", dest="commit", action="store_false")
+
+ parser.add_argument("--changelog-filename", "-o", default="CHANGELOG.md", metavar="FILENAME")
+ parser.add_argument("--changelog", "-l", default=False, action="store_true", help="emit a changelog")
+ parser.add_argument("--no-changelog", dest="changelog", action="store_false")
+
+ parser.add_argument("--version-filename", default="VERSION", metavar="FILENAME")
+ parser.add_argument("--version-file", default=False, action="store_true")
+ parser.add_argument("--no-version-file", dest="version-file", action="store_false")
+
+ args = parser.parse_args()
+
+ return args
+
+
 def release(args):
 
  use_tag = args.tag
@@ -61,6 +102,7 @@ def release(args):
  use_version_file = args.version_file
  version_file = args.version_filename
  is_committing = args.commit
+ force_versioning = args.force
 
  logging.basicConfig()
 
@@ -146,7 +188,7 @@ def release(args):
   log.fatal("could not fetch git remote url")
   exit(1)
 
- git_remote_url = git_remote_get_url_out.strip()
+ git_remote_url = git_remote_get_url_out
  if not git_remote_url.startswith("https://github.com") or not git_remote_url.endswith(".git"):
   log.fatal("repo '%s' doesn't seem to be a github repository", git_remote_url)
   exit(1)
@@ -160,7 +202,7 @@ def release(args):
   log.fatal("could not read current branch")
   exit(1)
 
- git_branch = git_rev_parse_out.strip()
+ git_branch = git_rev_parse_out
  assert git_branch
 
  log.debug("git branch: %s", git_branch)
@@ -179,10 +221,7 @@ def release(args):
  current_tag = f"{year}.{month}"
  latest_tag = current_tag
 
- # note/fred: here we are running a git command and parsing the output
-
  is_valid, git_describe_tags_out = cli(["git", "describe", "--tags", "--abbrev=0"])
-
  if not is_valid or latest_tag == "":
   log.warning("No tags were found -- treating as first release using tag '%s'", latest_tag)
   is_first_release = True
@@ -214,14 +253,19 @@ def release(args):
 
   string = io.StringIO(git_out)
 
-  changes = parse_git_commits(string, pattern, type_pattern)
+  changes, num_commits = parse_git_commits(string, pattern, type_pattern)
   num_commits_to_report = len(changes)
 
+  log.debug("found %d change(s) in %d commits", num_commits_to_report, num_commits)
+  
   ################################
   # note/fred: fetch new version by bumping the tag according to a given tag spec
 
-  if num_commits_to_report > 0:
-   log.debug("found %d change(s) -- bumping version", num_commits_to_report)
+  has_commits = (num_commits > 0)
+  has_changes = (num_commits_to_report > 0)
+  do_versioning_anyway = (force_versioning and has_commits)
+
+  if has_changes or do_versioning_anyway:
 
    ################################
    # note/fred: aggregate changes of type
@@ -302,7 +346,7 @@ def release(args):
    ################################
    # note/fred: read existing changelog
 
-   if emit_changes_to_changelog:
+   if emit_changes_to_changelog and has_changes:
 
     changelog_str = ""
     changelog_prev_content_str = ""
@@ -386,7 +430,8 @@ def release(args):
       exit(1)
 
    else:
-    pass  # do nothing
+    if not has_changes:
+     log.warning("no changes were detected in commits, skipping changelog")
 
    ##################################
    # note/fred: tag and push version
@@ -429,7 +474,7 @@ def release(args):
 
 def cli(argument_list) -> (bool, str):
  result = subprocess.run(argument_list, capture_output=subprocess.PIPE)
- return result.returncode == 0, result.stdout.decode("utf-8").rstrip()
+ return result.returncode == 0, result.stdout.decode("utf-8").strip()
 
 
 def parse_git_commits(string, pattern, type_pattern):
@@ -472,9 +517,12 @@ def parse_git_commits(string, pattern, type_pattern):
     assert subject_type
     assert subject_value
 
+    # @test!
     # todo/fred: consider max number of commits supported
-    if num_commits > 99999:
-     assert False
+    MAX_COMMITS_TO_PARSE = 99999
+    if num_commits > MAX_COMMITS_TO_PARSE:
+     log.warning("reached a maximum number of %d commits to parse for changes, skipping the rest", num_commits)
+     break
 
     #######################
     # note/fred: parse body
@@ -502,11 +550,14 @@ def parse_git_commits(string, pattern, type_pattern):
 
     num_commits_to_report += 1
 
+    # @profile
+    # todo/fred: add manual gc collection if we reach ridiculous numbers of commits to parse
+
    else:  # if type_result:
-    # note/fred: commit was somehow malformed or missing
+    log.warning("commit '%s' was somehow malformed", line)
     assert False  # todo/fred: diagnose
 
- return changes
+ return changes, num_commits
 
 
 def split_changelog_header_and_content(changelog_str, release_version) -> (str, str):

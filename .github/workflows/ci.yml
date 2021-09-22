@@ -20,21 +20,6 @@ jobs:
         pip install pip-tools
         pip-sync dev/requirements-dev.txt
         pip install -e .
-    - run: python -m pytest
-
- Code-Coverage:
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-       python-version: 3.9
-       architecture: x64
-    - run: |
-        pip install pip-tools
-        pip-sync dev/requirements-dev.txt
-        pip install -e .
     - run: |
         coverage run --source=bumpkin -m pytest
         coverage xml
