@@ -2,9 +2,12 @@ name: Run tests
 on: [push, pull_request]
 jobs:
  Python-Tests:
-  runs-on: ubuntu-latest
+  name: ${{ matrix.os }}-${{ matrix.python-version }}
+  runs-on: ${{ matrix.os }}-latest
   strategy:
+    fail-fast: false
     matrix:
+      os: ['macOS', 'Windows', 'Ubuntu']
       python-version: ['3.6', '3.7', '3.8', '3.9']
   steps:
     - uses: actions/checkout@v2
