@@ -3,7 +3,7 @@ import os
 
 import pytest
 
-from bumpkin import bumpkin
+from bumpkin import bumpkin as bump
 
 
 WINDOWS_LINE_ENDING = R'\r\n'
@@ -19,7 +19,7 @@ def test_changelog_generation():
  changes_pivoted = {}
  is_first_release = True
 
- result = bumpkin.generate_changelog_content(datestr, prev_version, new_version, repo_name, changes_pivoted, is_first_release)
+ result = bump.generate_changelog_content(datestr, prev_version, new_version, repo_name, changes_pivoted, is_first_release)
 
  assert result
 
@@ -45,7 +45,7 @@ def test_add_to_existing_invalid_changelog(old_non_changelog_file):
  with open(old_non_changelog_file[0], "r") as testfile:
   changelog_str = testfile.read()
 
- result = bumpkin.split_changelog_header_and_content(changelog_str, release_version)
+ result = bump.split_changelog_header_and_content(changelog_str, release_version)
  assert result[0] == "foo bar baz"
  assert result[1] == ""
 
@@ -96,7 +96,7 @@ def test_add_to_existing_changelog(old_fake_changelog_file):
  with open(old_fake_changelog_file[0], "r") as testfile:
   changelog_str = testfile.read()
 
- result = bumpkin.split_changelog_header_and_content(changelog_str, release_version)
+ result = bump.split_changelog_header_and_content(changelog_str, release_version)
  assert result[0] == old_fake_changelog_file[1]
  assert result[1] == old_fake_changelog_file[2]
 
