@@ -8,7 +8,7 @@ jobs:
     fail-fast: false
     matrix:
       sys:
-        - { os: 'macOS', shell: 'terminal' }
+        - { os: 'macOS', shell: 'zsh' }
         - { os: 'Windows', shell: 'bash' }
         - { os: 'Ubuntu', shell: 'bash' }
       python-version: ['3.6', '3.7', '3.8', '3.9']
