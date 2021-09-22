@@ -17,12 +17,12 @@ jobs:
        python-version: ${{ matrix.python-version }}
        architecture: x64
     - run: |
-        pip install pip-tools
-        pip-sync dev/requirements-dev.txt
-        pip install -e .
+        pip install --user pip-tools
+        pip-sync dev/requirements-dev.txt --user
+        pip install --user -e .
     - run: |
-        python -m coverage run --source=bumpkin -m pytest
-        python -m coverage xml
+        coverage run --source=bumpkin -m pytest
+        coverage xml
     - uses: codecov/codecov-action@v2
       with:
         flags: unittests
