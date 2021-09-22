@@ -2,7 +2,7 @@ name: Release
 on:
  push:
   tags:
-   - '\d{4}.\d{1-2}*'
+   - '*'
  release:
   types: [published]
 jobs:
