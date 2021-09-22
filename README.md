@@ -1,7 +1,12 @@
 
-[![codecov](https://codecov.io/gh/fredheidrich/bumpkin/branch/main/graph/badge.svg?token=WCM92TNZCA)](https://codecov.io/gh/fredheidrich/bumpkin)
+[![PyPI](https://img.shields.io/pypi/standard-bumpkin)](https://pypi.org/project/standard-bumpkin/) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/standard-bumpkin)
+ [![codecov](https://codecov.io/gh/fredheidrich/bumpkin/branch/main/graph/badge.svg?token=WCM92TNZCA)](https://codecov.io/gh/fredheidrich/bumpkin)
 
 # Standard Bumpkin
+
+```bash
+pip install standard-bumpkin
+```
 
 # Usage
 
