@@ -12,6 +12,9 @@ jobs:
         - { os: 'Windows', shell: 'bash' }
         - { os: 'Ubuntu', shell: 'bash' }
       python-version: ['3.6', '3.7', '3.8', '3.9']
+  defaults:
+    run:
+      shell: ${{ matrix.sys.shell }}
   steps:
     - uses: actions/checkout@v2
     - name: Set up Python
@@ -26,7 +29,6 @@ jobs:
     - run: |
         coverage run --source=bumpkin -m pytest
         coverage xml
-      shell: ${{ matrix.sys.shell }}
     - uses: codecov/codecov-action@v2
       with:
         flags: unittests
