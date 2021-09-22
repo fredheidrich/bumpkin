@@ -16,6 +16,7 @@ jobs:
     - run: |
         pip install pip-tools
         pip-sync dev/requirements-dev.txt
+        pip install -e .
     - run: python -m pytest
 
  Code-Coverage:
@@ -30,6 +31,7 @@ jobs:
     - run: |
         pip install pip-tools
         pip-sync dev/requirements-dev.txt
+        pip install -e .
     - run: |
         coverage run --source=bumpkin -m pytest
         coverage xml

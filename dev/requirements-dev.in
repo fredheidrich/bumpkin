@@ -1,8 +1,15 @@
 
+# dev
 pip-tools
+
+# testing
 coverage
 pytest
 pytest-watch
+
+# distribution
+twine
+build
 
 # in addition to our standard requirements
 -c ../requirements.txt
