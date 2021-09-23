@@ -38,6 +38,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     environment: release
+    env:
+      # note/fred: use a dedicated PAT to push from github-cations
+      GITHUB_TOKEN: ${{ secrets.PAT }}
     steps:
       - uses: actions/checkout@v2
         with:
@@ -55,8 +58,5 @@ jobs:
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@users.noreply.github.com'
           bumpkin
-        env:
-          # note/fred: use a dedicated PAT to push from github-cations
-          GITHUB_TOKEN: ${{ secrets.PAT }}
 
 
