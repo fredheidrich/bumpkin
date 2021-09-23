@@ -211,15 +211,15 @@ def release(args):
   log.fatal("repo '%s' doesn't seem to be a github repository", git_remote_url)
   exit(1)
 
+ repo_url = git_remote_url
  if git_remote_url.endswith(".git"):
-  git_remote_url = git_remote_url[:-4]
+  assert len(repo_url) > 4
+  repo_url = git_remote_url[:-4]
+
+ assert repo_url
 
  if verbosity > 0:
-  log.info("bumping repo: '%s'", git_remote_url)
-
- assert len(git_remote_url) > 4
- repo_url = git_remote_url[:-4]
- log.debug("git repo url: %s", repo_url)
+  log.info("git repo url: %s", repo_url)
 
  is_valid, git_rev_parse_out = cli(["git", "rev-parse", "--abbrev-ref", "HEAD"])
  if not is_valid:

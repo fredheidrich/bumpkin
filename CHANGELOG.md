@@ -8,11 +8,11 @@ and the project uses a calendar versioning scheme, 'year.month[.revision]'.
 ## [Unreleased]
 
 <a name='2021.9.10'></a>
-## [[2021.9.10](https://github.com/fredheidrich/bum/compare/2021.9.9...2021.9.10)] - 2021-09-23
+## [[2021.9.10](https://github.com/fredheidrich/bumpkin/compare/2021.9.9...2021.9.10)] - 2021-09-23
 
 ### Changes
 
-* Will now fail if we didn't find a version to bump ([ae63215](https://github.com/fredheidrich/bum/commit/ae6321515c2c82a259bda108672cd841ecdb71ca))
+* Will now fail if we didn't find a version to bump ([ae63215](https://github.com/fredheidrich/bumpkin/commit/ae6321515c2c82a259bda108672cd841ecdb71ca))
 
 <a name='2021.9.5'></a>
 ## [[2021.9.5](https://github.com/fredheidrich/bumpkin/compare/2021.9.4...2021.9.5)] - 2021-09-23
