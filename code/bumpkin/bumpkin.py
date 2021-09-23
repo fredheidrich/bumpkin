@@ -311,7 +311,8 @@ def release(args):
     log.debug("emitting version file: %s", version_file)
     with open(version_file, "w") as file:
      file.write(new_tag)
-     
+
+   if use_version_file:
     files_to_add += [version_file]
 
    ################################
@@ -368,7 +369,7 @@ def release(args):
      with open(changelog_path, "w") as new_changelog:
       new_changelog.write(changelog_str)
 
-     files_to_add += [changelog_path]
+    files_to_add += [changelog_path]
 
     if is_preview_changelog or is_dry_run:
      print("Changelog Preview".center(80, "-"))
