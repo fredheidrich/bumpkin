@@ -27,6 +27,8 @@ CONSIDER
 - use the tool to detect changes, but not committing stuff?
  - git status --porcelain=v1? but portable?
 - use version file to fetch version instead of tags if available?
+- don't run tests if the push is coming from ci (trusted)?
+- allow special switches for not doing versions for some commits (magic commands)?
 
 UNRELATED
 - generate a toc
