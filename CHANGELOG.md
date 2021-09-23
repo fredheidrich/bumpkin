@@ -7,6 +7,12 @@ and the project uses a calendar versioning scheme, 'year.month[.revision]'.
 
 ## [Unreleased]
 
+<a name='2021.9.2'></a>## [2021.9.2](https://github.com/fredheidrich/bumpkin/compare/2021.9.1...2021.9.2) - 2021-09-23
+
+### Bugfix
+
+* Bumping micro tag spec ([c0306df](https://github.com/fredheidrich/bumpkin/commit/c0306df1dc57695ea379b9b86eaaa5400d0283b4))
+
 <a name='2021.9'></a>## [2021.9] - 2021-09-23
 
 ### Additions
