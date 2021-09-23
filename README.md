@@ -13,7 +13,7 @@ pip install standard-bumpkin
 ```bash
 git config --global user.email "foo@bar.com"
 git config --global user.name "Autoversion"
-python -Om bumpkin
+bumpkin --help
 ```
 
 # What is it?

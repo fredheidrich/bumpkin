@@ -33,6 +33,13 @@ setuptools.setup(
  packages=setuptools.find_packages(where="code"),
  package_dir={"": "code"},
  install_requires=[],
+ entry_points={
+ 	"console_scripts": [
+ 		"bumpkin = bumpkin:console_entry",
+ 		"bumpkin%d = bumpkin:console_entry" % sys.version_info[:1],
+ 		"bumpkin-%d.%d = bumpkin:console_entry" % sys.version_info[:2],
+ 	]
+ },
  classifiers = [
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",

@@ -2,11 +2,8 @@
 """
 
 def main():
-	# todo/fred: replace python __main__ cli with a shell wrapper instead
- import bumpkin
-
- args = bumpkin.cli_arguments()
- bumpkin.release(args)
+ from . import bumpkin
+ bumpkin.console_entry()
 
 
 if __name__ == "__main__":

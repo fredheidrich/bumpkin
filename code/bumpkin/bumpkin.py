@@ -56,34 +56,39 @@ COMMIT_PATTERN = R"^g([a-z0-9]{40}) '(.*)'"
 log = logging.getLogger(__name__)
 
 
+def console_entry():
+ args = cli_arguments()
+ release(args)
+
+
 def cli_arguments():
  import argparse
 
- parser = argparse.ArgumentParser(prog="bumpkin", description="Standard Bumpkin")
+ parser = argparse.ArgumentParser(prog="bumpkin", description="Standard Bumpkin", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
  parser.add_argument("--force", "-f", default=False, action="store_true", help="force a version bump if there are new commits, even if no changes were parsed")
  parser.add_argument("--debug", "-d", default=False, action="store_true")
- parser.add_argument("--dry-run", default=False, action="store_true")
+ parser.add_argument("--dry-run", default=False, action="store_true", help="only display the commands to run")
 
- parser.add_argument("--preview", default=False, action="store_true")
+ parser.add_argument("--preview", default=False, action="store_true", help="print a preview of the changelog to stdout")
  parser.add_argument("--no-preview", dest="preview", action="store_false")
 
- parser.add_argument("--push", "-p", default=False, action="store_true")
+ parser.add_argument("--push", "-p", default=True, action="store_true", help="push to repository after bumping")
  parser.add_argument("--no-push", dest="push", action="store_false")
 
- parser.add_argument("--tag", "-t", default=False, action="store_true", help="tag the repo with the version")
+ parser.add_argument("--tag", "-t", default=True, action="store_true", help="tag the repo with the version")
  parser.add_argument("--no-tag", dest="tag", action="store_false")
 
- parser.add_argument("--commit", "-c", default=False, action="store_true", help="commit changelog to history")
+ parser.add_argument("--commit", "-c", default=True, action="store_true", help="commit changelog to history")
  parser.add_argument("--no-commit", dest="commit", action="store_false")
 
- parser.add_argument("--changelog-filename", "-o", default="CHANGELOG.md", metavar="FILENAME")
- parser.add_argument("--changelog", "-l", default=False, action="store_true", help="emit a changelog")
+ parser.add_argument("--changelog-filename", "-o", default="CHANGELOG.md", metavar="FILENAME", help="filename of changelog to write changes to")
+ parser.add_argument("--changelog", "-l", default=True, action="store_true", help="emit changes to changelog")
  parser.add_argument("--no-changelog", dest="changelog", action="store_false")
 
- parser.add_argument("--version-filename", default="VERSION", metavar="FILENAME")
- parser.add_argument("--version-file", default=False, action="store_true")
- parser.add_argument("--no-version-file", dest="version-file", action="store_false")
+ parser.add_argument("--version-filename", default="VERSION", metavar="FILENAME", help="filename of version file")
+ parser.add_argument("--version-file", default=True, action="store_true", help="save version string to a file")
+ parser.add_argument("--no-version-file", dest="version_file", action="store_false")
 
  args = parser.parse_args()
 
@@ -105,11 +110,15 @@ def release(args):
  is_committing = args.commit
  force_versioning = args.force
 
- logging.basicConfig()
+ DEFAULT_FORMAT = '[%(levelname)s %(asctime)s] %(message)s'
+ DEBUG_FORMAT = '[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d] %(message)s'
 
  if is_debug:
+  logging.basicConfig(format=DEBUG_FORMAT)
   log.setLevel(logging.DEBUG)
+  log.debug("args: %s", args)
  else:
+  logging.basicConfig(format=DEFAULT_FORMAT)
   log.setLevel(logging.INFO)
 
  #############################
@@ -237,7 +246,7 @@ def release(args):
  else:
   git_cmd = ["git", "log", "{}..HEAD".format(latest_tag), "--pretty=g%H '%s'%n%bEOC"]
 
- log.debug(git_cmd)
+ log.debug(" ".join(git_cmd))
 
  type_pattern = re.compile(R"(.*):(.*)")
  pattern = re.compile(COMMIT_PATTERN)
@@ -352,7 +361,7 @@ def release(args):
      with open(changelog_path, "w") as new_changelog:
       new_changelog.write(changelog_str)
 
-    if is_preview_changelog:
+    if is_preview_changelog or is_dry_run:
      print("Changelog Preview".center(80, "-"))
      print(changelog_str, end="", flush=True)
      print("-" * 80)
@@ -365,7 +374,7 @@ def release(args):
      files_to_add += [version_file]
 
     git_add_cmd = ["git", "add"] + files_to_add
-    git_commit_cmd = ["git", "commit", "-m", "'version {}'".format(new_tag)]
+    git_commit_cmd = ["git", "commit", "-m", "version {}".format(new_tag)]
 
     if verbosity > 0:
      log.info(" ".join(git_add_cmd))
@@ -397,7 +406,7 @@ def release(args):
    if emit_changes_to_changelog:
     branches_to_push += [git_branch]
 
-   git_tag_cmd = ["git", "tag", "-a", new_tag, "-m", "'version {}'".format(new_tag)]
+   git_tag_cmd = ["git", "tag", "-a", new_tag, "-m", "version {}".format(new_tag)]
    git_push_cmd = ["git", "push", "--atomic", git_remote] + list(reversed(branches_to_push))
 
    if verbosity > 0:
