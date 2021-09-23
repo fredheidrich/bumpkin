@@ -8,7 +8,7 @@ and the project uses a calendar versioning scheme, 'year.month[.revision]'.
 ## [Unreleased]
 
 <a name='2021.9.2'></a>
-## [2021.9.2](https://github.com/fredheidrich/bumpkin/compare/2021.9.1...2021.9.2) - 2021-09-23
+## [[2021.9.2](https://github.com/fredheidrich/bumpkin/compare/2021.9.1...2021.9.2)] - 2021-09-23
 
 ### Bugfixes
 

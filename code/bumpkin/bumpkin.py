@@ -646,15 +646,20 @@ def generate_changelog_content(datestr, prev_version, new_version, repo_url, cha
 
  with io.StringIO() as changelog:
 
-  changelog.write("<a name='{0}'></a>\n## [{0}]".format(new_version))
+  if is_first_release:
+   changelog.write("<a name='{0}'></a>\n## [{0}]".format(new_version))
+  else:
+   changelog.write("<a name='{0}'></a>\n## [[{0}]".format(new_version))
 
   # compare string
-  if not is_first_release:
+  if is_first_release:
+   pass
+  else:
    assert prev_version != new_version
    compare_url = "{}/compare/{}...{}".format(
     repo_url, prev_version, new_version
    )
-   changelog.write("({})".format(compare_url))
+   changelog.write("({})]".format(compare_url))
 
   # date
   changelog.write(" - {}\n".format(datestr))
