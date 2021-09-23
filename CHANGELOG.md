@@ -7,24 +7,17 @@ and the project uses a calendar versioning scheme, 'year.month[.revision]'.
 
 ## [Unreleased]
 
-<a name='2021.9.2'></a>## [2021.9.2](https://github.com/fredheidrich/bumpkin/compare/2021.9.1...2021.9.2) - 2021-09-23
+<a name='2021.9.2'></a>
+## [2021.9.2](https://github.com/fredheidrich/bumpkin/compare/2021.9.1...2021.9.2) - 2021-09-23
 
-### Bugfix
+### Bugfixes
 
 * Bumping micro tag spec ([c0306df](https://github.com/fredheidrich/bumpkin/commit/c0306df1dc57695ea379b9b86eaaa5400d0283b4))
 
-<a name='2021.9'></a>## [2021.9] - 2021-09-23
+<a name='2021.9'></a>
+## [2021.9] - 2021-09-23
 
 ### Additions
 
 * Adds --force argument ([94bc0de](https://github.com/fredheidrich/bumpkin/commit/94bc0de9241b27604718bff688dcf52daecbef57))
 * Adds optional --commit argument ([1cdddd1](https://github.com/fredheidrich/bumpkin/commit/1cdddd1bd7504657ba3455391f42d5e2dac09ec2))
-
-### New File
-
-* Adds setup.py ([0bda136](https://github.com/fredheidrich/bumpkin/commit/0bda1362f80eb57de05c03f276fd404cc1df68f3))
-
-### Feature Add
-
-* Adds a new file to the repo ([4fa7b0a](https://github.com/fredheidrich/bumpkin/commit/4fa7b0ae09e514ad23a7410e74ba90e54fe9fdea))
-

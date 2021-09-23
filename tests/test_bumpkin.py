@@ -91,12 +91,14 @@ def old_fake_changelog_file():
 """
  )
  body = (
- """<a name='2021.9'></a>## [2021.9]
+ """<a name='2021.9'></a>
+## [2021.9]
 
 ### Additions
 * foobar
 
-<a name='2021.8'></a>## [2021.8]
+<a name='2021.8'></a>
+## [2021.8]
 
 ### Changes
 * foo

@@ -581,7 +581,7 @@ def split_changelog_header_and_content(changelog_str, release_version) -> (str, 
 
  with io.StringIO(changelog_str) as existing_changelog:
 
-  CHANGE_PATTERN = R"^<a name='(.*)'></a>## "
+  CHANGE_PATTERN = R"^<a name='(.*)'></a>"
   change_pattern = re.compile(CHANGE_PATTERN)
 
   line = ""
@@ -602,6 +602,13 @@ def split_changelog_header_and_content(changelog_str, release_version) -> (str, 
 
    # note/fred: this is the first occurance of an an anchor
    if line.strip().startswith("<a name='"):
+
+    next_line = existing_changelog.readline()
+    if not next_line:
+     log.warning("loose hanging anchor in changelog")
+     break
+
+    line = next_line
 
     change_result = change_pattern.match(line)
     if change_result and change_result.group(0) == release_version:
@@ -637,10 +644,9 @@ def split_changelog_header_and_content(changelog_str, release_version) -> (str, 
 
 def generate_changelog_content(datestr, prev_version, new_version, repo_url, changes_pivoted, is_first_release) -> str:
 
-
  with io.StringIO() as changelog:
 
-  changelog.write("<a name='{0}'></a>## [{0}]".format(new_version))
+  changelog.write("<a name='{0}'></a>\n## [{0}]".format(new_version))
 
   # compare string
   if not is_first_release:
