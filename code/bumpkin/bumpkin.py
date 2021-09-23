@@ -1,5 +1,9 @@
 """
 
+ASSUMPTIONS
+- this tool created to bump versions, so if it can't do that it will exit with
+  return code 1, meaning failure. This is so it can be used in CI/CD tooling
+
 OVERVIEW
 - [x] parse tag spec and compare with latest tag
 - [x] bump the version number
@@ -442,6 +446,7 @@ def release(args):
 
   else:
    log.info("no changes was parsed from the commit history, ignoring release")
+   exit(1)
 
  else:
   log.fatal("could not run git commant '%a', aborting", git_cmd)
