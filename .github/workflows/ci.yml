@@ -1,34 +1,55 @@
-name: Run tests
+name: CI/CD
 on: [push, pull_request]
 jobs:
- Python-Tests:
-  name: ${{ matrix.sys.os }}-${{ matrix.python-version }}
-  runs-on: ${{ matrix.sys.os }}-latest
-  strategy:
-    fail-fast: false
-    matrix:
-      sys:
-        - { os: 'macOS', shell: 'bash' }
-        - { os: 'Windows', shell: 'bash' }
-        - { os: 'Ubuntu', shell: 'bash' }
-      python-version: ['3.6', '3.7', '3.8', '3.9']
-  defaults:
-    run:
-      shell: ${{ matrix.sys.shell }}
-  steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-       python-version: ${{ matrix.python-version }}
-       architecture: x64
-    - run: |
-        pip install pip-tools
-        pip-sync dev/requirements-dev.txt
-        pip install -e .
-    - run: |
-        coverage run --source=code/bumpkin -m pytest
-        coverage xml
-    - uses: codecov/codecov-action@v2
-      with:
-        flags: unittests
+  test:
+    name: ${{ matrix.sys.os }}-py${{ matrix.python-version }}
+    runs-on: ${{ matrix.sys.os }}-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sys:
+          - { os: 'macOS', shell: 'bash' }
+          - { os: 'Windows', shell: 'bash' }
+          - { os: 'Ubuntu', shell: 'bash' }
+        python-version: ['3.6', '3.7', '3.8', '3.9']
+    defaults:
+      run:
+        shell: ${{ matrix.sys.shell }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+         python-version: ${{ matrix.python-version }}
+         architecture: x64
+      - run: |
+          pip install pip-tools
+          pip-sync dev/requirements-dev.txt
+          pip install -e .
+      - run: |
+          coverage run --source=code/bumpkin -m pytest
+          coverage xml
+      - uses: codecov/codecov-action@v2
+        with:
+          flags: unittests
+
+  version:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+         python-version: 3.9
+         architecture: x64
+      - run: |
+          pip install -e .
+      # note/fred: bumpkin will only tag, commit and push if changes were detected
+      - run: |
+          git config --global user.name 'GitHub Actions CI/CD'
+          git config --global user.email 'cicd@users.noreply.github.com'
+          bumpkin
+
+
