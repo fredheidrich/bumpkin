@@ -92,6 +92,7 @@ def cli_arguments():
 
 def release(args):
 
+ verbosity = 1
  use_tag = args.tag
  is_debug = args.debug
  push_tags = args.push
@@ -212,18 +213,11 @@ def release(args):
  # note/fred: fetch latest tag
 
  is_first_release = False
-
- now = datetime.datetime.now()
- year = now.strftime("%Y")
- month = f"{now.month}"
- log.debug("year:%s, month: %s", year, month)
-
- current_tag = f"{year}.{month}"
- latest_tag = current_tag
+ latest_tag = ""
 
  is_valid, git_describe_tags_out = cli(["git", "describe", "--tags", "--abbrev=0"])
- if not is_valid or latest_tag == "":
-  log.warning("No tags were found -- treating as first release using tag '%s'", latest_tag)
+ if not is_valid:
+  log.warning("No tags were found -- treating as first release")
   is_first_release = True
 
   release_without_tags = True
@@ -286,50 +280,11 @@ def release(args):
 
    # todo/fred: we would like to have differnt types of tag specs
 
-   if is_first_release:
-    new_tag = current_tag
-   else:
-    if latest_tag == current_tag:
-     # note/fred: if the tags are the same, we need to bump the version
-     # according to the tag spec
+   now = datetime.datetime.now()
+   year = now.strftime("%Y")
+   month = f"{now.month}"
 
-     tag_spec_pattern = re.compile(R"(\d{4})[.](\d{1,2})([.]\d+)?")
-     tag_result = tag_spec_pattern.match(latest_tag)
-     if tag_result:
-
-      tag_groups = tag_result.groups()
-      log.debug(tag_groups)
-
-      major = int(tag_groups[0])
-      minor = int(tag_groups[1])
-      micro = tag_groups[2]
-
-      assert major
-      assert minor
-
-      if int(year) == major:
-       if int(month) == minor:
-        if micro:
-         new_tag = "{}.{}".format(current_tag, str(int(micro) + 1))
-        else:
-         new_tag = "{}.{}".format(current_tag, str(1))
-      else:
-       # note/fred: in all other cases we restart the numbering
-       new_tag = current_tag
-
-       if int(year) > major:
-        log.warning("year is from the future?")
-       
-       if (int(year) == major and int(month) > minor):
-        log.warning("month is from the future?")
-
-     else:
-      log.warning("last tag does not match the tag spec, or unknown tag found -- setting a new tag")
-      new_tag = current_tag
-
-    else:
-     log.debug("starting from zero")
-     new_tag = current_tag
+   new_tag = parse_tag_spec(latest_tag, year, month, is_first_release)
 
    assert new_tag
 
@@ -412,10 +367,12 @@ def release(args):
     git_add_cmd = ["git", "add"] + files_to_add
     git_commit_cmd = ["git", "commit", "-m", "'version {}'".format(new_tag)]
 
-    if is_dry_run:
+    if verbosity > 0:
      log.info(" ".join(git_add_cmd))
      log.info(" ".join(git_commit_cmd))
 
+    if is_dry_run:
+     pass
     elif is_committing:
      is_valid, _ = cli(git_add_cmd)
      if is_valid:
@@ -443,11 +400,15 @@ def release(args):
    git_tag_cmd = ["git", "tag", "-a", new_tag, "-m", "'version {}'".format(new_tag)]
    git_push_cmd = ["git", "push", "--atomic", git_remote] + list(reversed(branches_to_push))
 
-   if is_dry_run:
-    log.info(" ".join(git_tag_cmd))
-    log.info(" ".join(git_push_cmd))
+   if verbosity > 0:
+    if use_tag:
+     log.info(" ".join(git_tag_cmd))
+    if push_tags:
+     log.info(" ".join(git_push_cmd))
 
-   else:    
+   if is_dry_run:
+    pass
+   else:
     if use_tag:
      is_valid, git_tag_out = cli(git_tag_cmd)
      if is_valid:
@@ -461,8 +422,6 @@ def release(args):
      else:
       log.fatal("could not create a tag on current commit, aborting")
       exit(1)
-
-   # todo/fred: use the github api to create a release from this tag now
 
   else:
    log.info("no changes was parsed from the commit history, ignoring release")
@@ -558,6 +517,61 @@ def parse_git_commits(string, pattern, type_pattern):
     assert False  # todo/fred: diagnose
 
  return changes, num_commits
+
+
+def parse_tag_spec(latest_tag, year, month, is_first_release):
+
+ current_tag = f"{year}.{month}"
+
+ if is_first_release:
+  new_tag = current_tag
+ else:
+
+  if latest_tag.startswith(current_tag):
+
+   # note/fred: if the tags are the same, we need to bump the version
+   # according to the tag spec
+
+   tag_spec_pattern = re.compile(R"(\d{4})[.](\d{1,2})([.](\d+))?")
+   tag_result = tag_spec_pattern.match(latest_tag)
+   if tag_result:
+
+    tag_groups = tag_result.groups()
+
+    major = int(tag_groups[0])
+    minor = int(tag_groups[1])
+    micro = tag_groups[3]
+
+    log.debug("parsed latest tag to major: %d, minor: %d, micro: %s", major, minor, str(micro))
+
+    assert major
+    assert minor
+
+    if int(year) == major:
+     if int(month) == minor:
+      if micro:
+       new_tag = "{}.{}".format(current_tag, str(int(micro) + 1))
+      else:
+       new_tag = "{}.{}".format(current_tag, str(1))
+    else:
+     # note/fred: in all other cases we restart the numbering
+     new_tag = current_tag
+
+     if int(year) > major:
+      log.warning("year is from the future?")
+     
+     if (int(year) == major and int(month) > minor):
+      log.warning("month is from the future?")
+
+   else:
+    log.warning("last tag does not match the tag spec, or unknown tag found -- setting a new tag")
+    new_tag = current_tag
+
+  else:
+   log.debug("starting from zero")
+   new_tag = current_tag
+
+ return new_tag
 
 
 def split_changelog_header_and_content(changelog_str, release_version) -> (str, str):

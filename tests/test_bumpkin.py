@@ -10,6 +10,33 @@ WINDOWS_LINE_ENDING = R'\r\n'
 UNIX_LINE_ENDING = R'\n'
 
 
+def test_parse_tag_spec():
+
+	year = "2021"
+	month = "9"
+
+	tag = bump.parse_tag_spec("", year, month, True)
+	assert tag == "2021.9"
+
+	tag = bump.parse_tag_spec("2021.9", year, month, False)
+	assert tag == "2021.9.1"
+
+	tag = bump.parse_tag_spec("2021.9.1", year, month, False)
+	assert tag == "2021.9.2"
+
+	year = "2021"
+	month = "10"
+
+	tag = bump.parse_tag_spec("2021.9.2", year, month, False)
+	assert tag == "2021.10"
+
+
+def test_cli_arguments():
+	# todo/fred: how do we actually test these?
+	args = bump.cli_arguments()
+	assert args
+
+
 def test_changelog_generation():
 
  datestr = "2021-09-18"

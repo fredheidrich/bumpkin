@@ -27,7 +27,7 @@ jobs:
         pip-sync dev/requirements-dev.txt
         pip install -e .
     - run: |
-        coverage run --source=bumpkin -m pytest
+        coverage run --source=code/bumpkin -m pytest
         coverage xml
     - uses: codecov/codecov-action@v2
       with:
