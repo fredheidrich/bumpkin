@@ -7,6 +7,13 @@ and the project uses a calendar versioning scheme, 'year.month[.revision]'.
 
 ## [Unreleased]
 
+<a name='2021.9.8'></a>
+## [[2021.9.8](https://github.com/fredheidrich/bum/compare/2021.9.7...2021.9.8)] - 2021-09-23
+
+### Dev
+
+* Testing cicd ([b7bf772](https://github.com/fredheidrich/bum/commit/b7bf77265d8a14f82ae84412dbe7c1631838e3f2))
+
 <a name='2021.9.7'></a>
 ## [[2021.9.7](https://github.com/fredheidrich/bum/compare/2021.9.6...2021.9.7)] - 2021-09-23
 
