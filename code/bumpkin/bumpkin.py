@@ -202,7 +202,7 @@ def release(args):
   exit(1)
 
  git_remote_url = git_remote_get_url_out
- if not git_remote_url.startswith("https://github.com") or not git_remote_url.endswith(".git"):
+ if not git_remote_url.startswith("https://github.com"):
   log.fatal("repo '%s' doesn't seem to be a github repository", git_remote_url)
   exit(1)
 
