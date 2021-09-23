@@ -7,6 +7,13 @@ and the project uses a calendar versioning scheme, 'year.month[.revision]'.
 
 ## [Unreleased]
 
+<a name='2021.9.11'></a>
+## [[2021.9.11](https://github.com/fredheidrich/bum/compare/2021.9.10...2021.9.11)] - 2021-09-23
+
+### Merge Branch 'Main' Of Https
+
+* //github.com/fredheidrich/bumpkin into main ([b05dc40](https://github.com/fredheidrich/bum/commit/b05dc404d3bd5dea7c416f40c10399d271b1bc6c))
+
 <a name='2021.9.10'></a>
 ## [[2021.9.10](https://github.com/fredheidrich/bum/compare/2021.9.9...2021.9.10)] - 2021-09-23
 
