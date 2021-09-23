@@ -7,6 +7,14 @@ and the project uses a calendar versioning scheme, 'year.month[.revision]'.
 
 ## [Unreleased]
 
+<a name='2021.9.12'></a>
+## [[2021.9.12](https://github.com/fredheidrich/bumpkin/compare/2021.9.11...2021.9.12)] - 2021-09-23
+
+### Bugfixes
+
+* Correctly trunkates github address on ubuntu ([2b50a4b](https://github.com/fredheidrich/bumpkin/commit/2b50a4b2c898f967d2e4116810313cf8e0ee5aae))
+* Prevent urls to be parsed as types ([afa2f22](https://github.com/fredheidrich/bumpkin/commit/afa2f22215cb171b5d4a1508e0a00392ddfe71ee))
+
 <a name='2021.9.10'></a>
 ## [[2021.9.10](https://github.com/fredheidrich/bumpkin/compare/2021.9.9...2021.9.10)] - 2021-09-23
 
