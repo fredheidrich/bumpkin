@@ -1,5 +1,12 @@
 name: CI/CD
-on: [push, pull_request]
+on:
+  push:
+    tags-ignore:
+      - '*'
+    paths-ignore:
+      - 'README.md'
+      - 'VERSION'
+  pull_request:
 jobs:
   test:
     name: ${{ matrix.sys.os }}-py${{ matrix.python-version }}
@@ -38,14 +45,13 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     environment: release
-    env:
-      # note/fred: use a dedicated PAT to push from github-cations
-      GITHUB_TOKEN: ${{ secrets.PAT }}
     steps:
       - uses: actions/checkout@v2
         with:
           # note/fred: fetches all tags and history we need for bumpkin
           fetch-depth: 0
+          # note/fred: use a dedicated PAT to push from github-actions
+          token: ${{ secrets.PAT }}
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
