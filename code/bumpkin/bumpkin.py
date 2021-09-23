@@ -16,18 +16,17 @@ OVERVIEW
 - [x] version this module
 
 - [x] ci/cd with GitHub Actions
+- [x] tidy up cli arguments (sensible defaults)
+- [x] create the release using github release
 - other version formats
-- format output from config
-- create the release using github release
-
 - cleanup meta data
-- tidy up cli arguments (sensible defaults)
 
 CONSIDER
 - stop commit and push if you have uncommitted changes?
 - partially bump a version for the cautious people
 - use the tool to detect changes, but not committing stuff?
  - git status --porcelain=v1? but portable?
+- use version file to fetch version instead of tags if available?
 
 UNRELATED
 - generate a toc
