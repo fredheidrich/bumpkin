@@ -211,6 +211,12 @@ def release(args):
   log.fatal("repo '%s' doesn't seem to be a github repository", git_remote_url)
   exit(1)
 
+ if git_remote_url.endswith(".git"):
+  git_remote_url = git_remote_url[:-4]
+
+ if verbosity > 0:
+  log.info("bumping repo: '%s'", git_remote_url)
+
  assert len(git_remote_url) > 4
  repo_url = git_remote_url[:-4]
  log.debug("git repo url: %s", repo_url)
@@ -376,7 +382,7 @@ def release(args):
 
     files_to_add += [changelog_path]
 
-    if is_preview_changelog or is_dry_run:
+    if is_preview_changelog:
      print("Changelog Preview".center(80, "-"))
      print(changelog_str, end="", flush=True)
      print("-" * 80)
@@ -463,6 +469,8 @@ def parse_git_commits(string, pattern, type_pattern):
  changes = []
  num_commits = 0
  num_commits_to_report = 0
+ 
+ safe_words = ["https://", "http://", "ftp://"]
 
  while (1):
 
@@ -471,6 +479,7 @@ def parse_git_commits(string, pattern, type_pattern):
    break
 
   stripped_line = line.rstrip()
+
   if len(stripped_line) > 0 and stripped_line[0] == 'g':
 
    result = pattern.match(line)
@@ -482,10 +491,18 @@ def parse_git_commits(string, pattern, type_pattern):
 
     num_commits += 1
 
+    # note/fred: prevent urls to be parsed as types
+
+    safe_subject = subject
+    for word in safe_words:
+     if word in subject:
+      safe_subject = safe_subject.replace(word, "_")
+      log.debug("truncating '%s' in %s", word, safe_subject)
+
     #######################
     # note/fred: parse type
 
-    type_result = type_pattern.match(subject)
+    type_result = type_pattern.match(safe_subject)
     if type_result:
      subject_type = type_result.group(1).strip()
      subject_value = type_result.group(2).strip()
@@ -610,12 +627,13 @@ def split_changelog_header_and_content(changelog_str, release_version) -> (str, 
   last_pos = 0
   num_lines = 0
   is_prev_tag_found_in_changelog = False
+
   while 1:
    
    last_pos = existing_changelog.tell()
    line = existing_changelog.readline()
 
-   log.debug("line: %s", line)
+   log.debug("line %d: %s", num_lines, line.strip())
    
    if not line:
     break
