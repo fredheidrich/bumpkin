@@ -37,6 +37,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    environment: release
     steps:
       - uses: actions/checkout@v2
         with:
@@ -51,8 +52,11 @@ jobs:
           pip install -e .
       # note/fred: bumpkin will only tag, commit and push if changes were detected
       - run: |
-          git config --global user.name 'GitHub Actions CI/CD'
-          git config --global user.email 'cicd@users.noreply.github.com'
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@users.noreply.github.com'
           bumpkin
+        env:
+          # note/fred: use a dedicated PAT to push from github-cations
+          GITHUB_TOKEN: ${{ secrets.PAT }}
 
 
