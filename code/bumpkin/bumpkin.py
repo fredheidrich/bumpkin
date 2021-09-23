@@ -25,6 +25,9 @@ OVERVIEW
 
 CONSIDER
 - stop commit and push if you have uncommitted changes?
+- partially bump a version for the cautious people
+- use the tool to detect changes, but not committing stuff?
+ - git status --porcelain=v1? but portable?
 
 UNRELATED
 - generate a toc
@@ -264,6 +267,8 @@ def release(args):
   ################################
   # note/fred: fetch new version by bumping the tag according to a given tag spec
 
+  files_to_add = []
+
   has_commits = (num_commits > 0)
   has_changes = (num_commits_to_report > 0)
   do_versioning_anyway = (force_versioning and has_commits)
@@ -306,6 +311,8 @@ def release(args):
     log.debug("emitting version file: %s", version_file)
     with open(version_file, "w") as file:
      file.write(new_tag)
+     
+    files_to_add += [version_file]
 
    ################################
    # note/fred: read existing changelog
@@ -361,18 +368,21 @@ def release(args):
      with open(changelog_path, "w") as new_changelog:
       new_changelog.write(changelog_str)
 
+     files_to_add += [changelog_path]
+
     if is_preview_changelog or is_dry_run:
      print("Changelog Preview".center(80, "-"))
      print(changelog_str, end="", flush=True)
      print("-" * 80)
 
-    #################################
-    # note/fred: commit changelog
+   else:
+    if not has_changes:
+     log.warning("no changes were detected in commits, skipping changelog")
 
-    files_to_add = [changelog_path]
-    if use_version_file:
-     files_to_add += [version_file]
+   #################################
+   # note/fred: commit files
 
+   if len(files_to_add) > 0:
     git_add_cmd = ["git", "add"] + files_to_add
     git_commit_cmd = ["git", "commit", "-m", "version {}".format(new_tag)]
 
@@ -394,10 +404,6 @@ def release(args):
      else:
       log.fatal("could not add changelog")
       exit(1)
-
-   else:
-    if not has_changes:
-     log.warning("no changes were detected in commits, skipping changelog")
 
    ##################################
    # note/fred: tag and push version
